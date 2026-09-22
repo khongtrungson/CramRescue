@@ -2,25 +2,61 @@ package com.example.cramrescue.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Emergency Cockpit Dark Theme Colors
-val DarkSlate = Color(0xFF0F1419)  // OLED Black background
-val DarkSurface = Color(0xFF1A1F26)  // Elevated surface
+// ---------------------------------------------------------------------------
+// Neutral UI colors
+//
+// These describe the calm, restrained backdrop of the app itself — not
+// product meaning. Reach for these for backgrounds, surfaces, text, and
+// borders. Never repurpose a semantic color (below) just to make a screen
+// look "on brand"; the light theme is the default day-to-day identity.
+// ---------------------------------------------------------------------------
 
-// Alert Colors - ER Triage
-val AlertRed = Color(0xFFE53935)  // Code Red
-val CautionAmber = Color(0xFFFFA726)  // Code Yellow
-val SurvivalGreen = Color(0xFF66BB6A)  // Pass Indicator / Code Green
+// Light palette — the default/primary CramRescue visual direction.
+val AppBackgroundLight = Color(0xFFFDFDFB)
+val AppSurfaceLight = Color(0xFFFFFFFF)
+val AppSurfaceVariantLight = Color(0xFFF1F1EF)
+val AppOutlineLight = Color(0xFFDCDCDA)
+val TextPrimaryLight = Color(0xFF1A1A1A)
+val TextSecondaryLight = Color(0xFF6E6E6E)
 
-// Accent Colors
-val EmergencyWhite = Color(0xFFEEEEEE)  // Primary text
-val SubduedGray = Color(0xFF9E9E9E)  // Secondary text
-val WarningYellow = Color(0xFFFFEB3B)  // Countdown warning
+// A single calm, neutral accent for interactive elements (buttons, selected
+// chips). Deliberately not red/yellow/green: those are reserved for ER
+// Triage meaning and must never become the default button color.
+val AccentPrimaryLight = Color(0xFF212121)
+val OnAccentPrimaryLight = Color(0xFFFFFFFF)
 
-// Legacy colors (keeping for compatibility)
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Neutral "selected/emphasis" container (e.g. a selected filter chip). Kept
+// neutral for the same reason as AccentPrimaryLight above — Material3 would
+// otherwise fall back to its own default tonal (purple) container.
+val AccentContainerLight = Color(0xFFE7E7E5)
+val OnAccentContainerLight = Color(0xFF1A1A1A)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Dark palette — preserved for future dark-mode support. requirements.md
+// §5.4 calls for an eventual dark mode for late-night cramming; this is not
+// wired up as the default yet (see CramRescueTheme), but the color set is
+// kept so that milestone isn't lost.
+val AppBackgroundDark = Color(0xFF0F1419)
+val AppSurfaceDark = Color(0xFF1A1F26)
+val AppSurfaceVariantDark = Color(0xFF232A33)
+val AppOutlineDark = Color(0xFF3A424C)
+val TextPrimaryDark = Color(0xFFEEEEEE)
+val TextSecondaryDark = Color(0xFF9E9E9E)
+val AccentContainerDark = Color(0xFF2A323C)
+val OnAccentContainerDark = Color(0xFFEEEEEE)
+
+// ---------------------------------------------------------------------------
+// Semantic CramRescue colors — ER Triage
+//
+// These carry product meaning and must stay reserved for it: badges,
+// priority indicators, and (later) emergency/urgency emphasis. Do not use
+// them as general-purpose decoration, and never let them become a screen's
+// dominant background color.
+// ---------------------------------------------------------------------------
+
+val CodeRed = Color(0xFFD32F2F)      // Critical / must-master content, urgent gaps
+val CodeYellow = Color(0xFFF9A825)   // Important / medium-priority content
+val CodeGreen = Color(0xFF2E7D32)    // Safe / optional / completed / positive
+
+val OnCodeRed = Color(0xFFFFFFFF)
+val OnCodeYellow = Color(0xFF1A1A1A)
+val OnCodeGreen = Color(0xFFFFFFFF)
