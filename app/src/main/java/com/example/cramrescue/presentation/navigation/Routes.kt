@@ -11,4 +11,8 @@ sealed class Screen(val route: String) {
         const val ARG_CAMPAIGN_ID = "campaignId"
         fun createRoute(campaignId: Long) = "cockpit/$campaignId"
     }
+    data object AddMaterial : Screen("add_material/{campaignId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        fun createRoute(campaignId: Long) = "add_material/$campaignId"
+    }
 }

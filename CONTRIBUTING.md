@@ -136,6 +136,20 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   language — they should read as the same calm product with meaningful color, not a new visual
   system each time.
 
+## Campaign Data Ownership
+
+- Campaign is the top-level ownership boundary for campaign-specific data (materials, and
+  whatever future per-campaign data is added).
+- Campaign-owned data must be explicitly associated with the relevant Campaign, directly (a
+  `campaignId` column/field) or through a clearly defined parent relationship.
+- Downstream features must not call `getLatestCampaign()` to infer ownership. `campaignId` should
+  come from explicit application/navigation state (e.g. a nav argument), passed down from wherever
+  the campaign was actually loaded.
+- `getLatestCampaign()` is currently only an MVP startup/resume policy (which campaign Home
+  reopens into) — it must never become a global assumption that the app only has one Campaign.
+- New schemas/APIs should stay multi-campaign-ready even while multi-campaign *management* UI
+  doesn't exist yet: query shapes like `getXForCampaign(campaignId)`, not `getLatestX()`.
+
 ## Dependency Management
 
 - Inspect the existing version catalog (`gradle/libs.versions.toml`) and Gradle configuration
@@ -145,3 +159,12 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - Add a dependency only when the current milestone actually requires it.
 - Prefer platform/Android functionality over a third-party library when it's sufficient for the
   requirement.
+
+## Investigation Discipline
+
+- Investigate only enough to make the next implementation decision.
+- Do not repeatedly inspect already-resolved dependencies or configuration.
+- Prefer compile/test feedback over speculative dependency investigation.
+- Successful commands should not be rerun without a specific reason.
+- Broad research should only be performed when blocked by a concrete issue.
+- Keep verification bounded to the acceptance criteria of the current milestone.

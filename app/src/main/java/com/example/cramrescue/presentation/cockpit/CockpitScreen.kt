@@ -31,7 +31,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CockpitScreen(
     viewModelFactory: CockpitViewModelFactory,
-    onBackToHome: () -> Unit
+    onBackToHome: () -> Unit,
+    onAddMaterials: (Long) -> Unit
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -145,6 +146,12 @@ fun CockpitScreen(
                         )
 
                         Spacer(modifier = Modifier.height(48.dp))
+
+                        Button(onClick = { onAddMaterials(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Thêm tài liệu")
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         TextButton(onClick = onBackToHome, modifier = Modifier.fillMaxWidth()) {
                             Text("Về màn hình chính")

@@ -17,6 +17,8 @@ import com.example.cramrescue.presentation.cockpit.CockpitScreen
 import com.example.cramrescue.presentation.cockpit.CockpitViewModelFactory
 import com.example.cramrescue.presentation.home.HomeScreen
 import com.example.cramrescue.presentation.home.HomeViewModelFactory
+import com.example.cramrescue.presentation.material.add.AddMaterialScreen
+import com.example.cramrescue.presentation.material.add.AddMaterialViewModelFactory
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -82,6 +84,29 @@ fun NavGraph(navController: NavHostController) {
                 onBackToHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
+                onAddMaterials = { id ->
+                    navController.navigate(Screen.AddMaterial.createRoute(id))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.AddMaterial.route,
+            arguments = listOf(navArgument(Screen.AddMaterial.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.AddMaterial.ARG_CAMPAIGN_ID) ?: 0L
+            val factory = AddMaterialViewModelFactory(
+                application.materialFileStore,
+                application.sourceDocumentRepository,
+                campaignId
+            )
+            AddMaterialScreen(
+                viewModelFactory = factory,
+                onBackToCockpit = {
+                    navController.navigate(Screen.Cockpit.createRoute(campaignId)) {
+                        popUpTo(Screen.Cockpit.createRoute(campaignId)) { inclusive = true }
                     }
                 }
             )
