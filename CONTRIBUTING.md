@@ -150,6 +150,16 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - New schemas/APIs should stay multi-campaign-ready even while multi-campaign *management* UI
   doesn't exist yet: query shapes like `getXForCampaign(campaignId)`, not `getLatestX()`.
 
+## OCR Source Coordinates
+
+- OCR spatial data must remain traceable to its SourceDocument/page.
+- Domain/persistence models must not depend on ML Kit-specific geometry types (e.g. no
+  `android.graphics.Rect` outside the ML Kit engine implementation).
+- Bounding boxes must use a documented coordinate system relative to the source image/page (see
+  `OcrResult` in `domain/model/`).
+- Persist enough source-dimension/page information to interpret those coordinates later.
+- Do not discard bounding boxes because Source Grounding depends on them.
+
 ## Dependency Management
 
 - Inspect the existing version catalog (`gradle/libs.versions.toml`) and Gradle configuration

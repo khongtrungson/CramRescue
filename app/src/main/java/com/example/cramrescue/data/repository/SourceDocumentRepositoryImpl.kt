@@ -17,4 +17,8 @@ class SourceDocumentRepositoryImpl(
     override suspend fun getDocumentsForCampaign(campaignId: Long): List<SourceDocument> {
         return sourceDocumentDao.getForCampaign(campaignId).map { it.toDomain() }
     }
+
+    override suspend fun getDocumentById(documentId: Long): SourceDocument? {
+        return sourceDocumentDao.getById(documentId)?.toDomain()
+    }
 }

@@ -7,4 +7,6 @@ interface SourceDocumentRepository {
 
     /** Only that campaign's documents — never another campaign's. */
     suspend fun getDocumentsForCampaign(campaignId: Long): List<SourceDocument>
+
+    suspend fun getDocumentById(documentId: Long): SourceDocument?
 }

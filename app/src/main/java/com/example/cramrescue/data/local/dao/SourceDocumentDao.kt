@@ -12,4 +12,7 @@ interface SourceDocumentDao {
 
     @Query("SELECT * FROM source_documents WHERE campaignId = :campaignId ORDER BY id ASC")
     suspend fun getForCampaign(campaignId: Long): List<SourceDocumentEntity>
+
+    @Query("SELECT * FROM source_documents WHERE id = :documentId")
+    suspend fun getById(documentId: Long): SourceDocumentEntity?
 }

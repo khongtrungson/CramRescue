@@ -6,6 +6,8 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Local, app-owned storage for imported study material images.
@@ -23,15 +25,20 @@ class MaterialFileStore(private val context: Context) {
     private val materialsDir: File
         get() = File(context.filesDir, "materials").apply { mkdirs() }
 
-    /** Copies the bytes behind [sourceUri] (e.g. a Photo Picker result) into app-private storage. */
-    fun copyFrom(sourceUri: Uri): String {
+    /**
+     * Copies the bytes behind [sourceUri] (e.g. a Photo Picker result) into app-private storage.
+     *
+     * Main-safe: callers run this from `viewModelScope`, which is `Dispatchers.Main.immediate`, so
+     * this function owns its own dispatcher rather than making every caller remember to.
+     */
+    suspend fun copyFrom(sourceUri: Uri): String = withContext(Dispatchers.IO) {
         val destination = File(materialsDir, "${UUID.randomUUID()}.jpg")
         val input = context.contentResolver.openInputStream(sourceUri)
             ?: throw IOException("Unable to open source URI: $sourceUri")
         input.use { stream ->
             destination.outputStream().use { output -> stream.copyTo(output) }
         }
-        return destination.absolutePath
+        destination.absolutePath
     }
 
     /** A fresh, empty file for the camera app to write a full-resolution capture into. */

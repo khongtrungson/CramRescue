@@ -19,6 +19,8 @@ import com.example.cramrescue.presentation.home.HomeScreen
 import com.example.cramrescue.presentation.home.HomeViewModelFactory
 import com.example.cramrescue.presentation.material.add.AddMaterialScreen
 import com.example.cramrescue.presentation.material.add.AddMaterialViewModelFactory
+import com.example.cramrescue.presentation.material.detail.MaterialDetailScreen
+import com.example.cramrescue.presentation.material.detail.MaterialDetailViewModelFactory
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -104,11 +106,31 @@ fun NavGraph(navController: NavHostController) {
             )
             AddMaterialScreen(
                 viewModelFactory = factory,
+                onOpenMaterial = { documentId ->
+                    navController.navigate(Screen.MaterialDetail.createRoute(documentId))
+                },
                 onBackToCockpit = {
                     navController.navigate(Screen.Cockpit.createRoute(campaignId)) {
                         popUpTo(Screen.Cockpit.createRoute(campaignId)) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Screen.MaterialDetail.route,
+            arguments = listOf(navArgument(Screen.MaterialDetail.ARG_DOCUMENT_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val documentId = backStackEntry.arguments?.getLong(Screen.MaterialDetail.ARG_DOCUMENT_ID) ?: 0L
+            val factory = MaterialDetailViewModelFactory(
+                application.sourceDocumentRepository,
+                application.ocrRepository,
+                application.processDocumentOcrUseCase,
+                documentId
+            )
+            MaterialDetailScreen(
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() }
             )
         }
     }

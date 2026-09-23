@@ -2,12 +2,12 @@ package com.example.cramrescue.presentation.material.add
 
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,12 +37,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cramrescue.presentation.material.decodeSampledBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
 fun AddMaterialScreen(
     viewModelFactory: AddMaterialViewModelFactory,
+    onOpenMaterial: (Long) -> Unit,
     onBackToCockpit: () -> Unit
 ) {
     val viewModel: AddMaterialViewModel = viewModel(factory = viewModelFactory)
@@ -137,6 +139,7 @@ fun AddMaterialScreen(
                         modifier = Modifier
                             .padding(end = 8.dp)
                             .size(96.dp)
+                            .clickable { onOpenMaterial(material.documentId) }
                     )
                 }
             }
@@ -175,18 +178,4 @@ private fun MaterialThumbnail(path: String, modifier: Modifier = Modifier) {
             )
         }
     }
-}
-
-private fun decodeSampledBitmap(path: String, maxDimension: Int): Bitmap? {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(path, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-
-    var sampleSize = 1
-    while (bounds.outWidth / sampleSize > maxDimension || bounds.outHeight / sampleSize > maxDimension) {
-        sampleSize *= 2
-    }
-
-    val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-    return BitmapFactory.decodeFile(path, options)
 }

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.cramrescue.data.local.entity.OcrResultEntity
+import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 import com.example.cramrescue.data.local.entity.SourceDocumentEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -57,7 +59,7 @@ class AppDatabaseMigrationTest {
         v1Db.close()
 
         val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
-            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
             .build()
 
         val campaign = runBlocking { migratedDb.campaignDao().getById(1L) }
@@ -79,6 +81,91 @@ class AppDatabaseMigrationTest {
         assertEquals(1, documents.size)
         assertEquals(documentId, documents[0].id)
         assertEquals("/data/test/image.jpg", documents[0].localPath)
+
+        migratedDb.close()
+    }
+
+    /**
+     * Verifies MIGRATION_2_3 preserves existing Milestone 2-4 Campaign/SourceDocument data while
+     * adding the new ocr_results/ocr_text_blocks tables.
+     */
+    @Test
+    fun migratingFromVersion2PreservesExistingDataAndAddsOcrTables() {
+        // Bootstrap a version-2 database file exactly as the Milestone 4 app would have left it.
+        val v2Db = context.openOrCreateDatabase(databaseName, Context.MODE_PRIVATE, null)
+        v2Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `campaigns` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `subjectArchetype` TEXT NOT NULL,
+                `examDateTimeEpochMillis` INTEGER NOT NULL,
+                `createdAtEpochMillis` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        v2Db.execSQL(
+            "INSERT INTO campaigns (id, name, subjectArchetype, examDateTimeEpochMillis, createdAtEpochMillis) " +
+                "VALUES (1, 'Existing Campaign', 'SOCIAL_THEORY', 1000000, 500000)"
+        )
+        v2Db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `source_documents` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `campaignId` INTEGER NOT NULL,
+                `sourceType` TEXT NOT NULL,
+                `localPath` TEXT NOT NULL,
+                `createdAtEpochMillis` INTEGER NOT NULL,
+                FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        v2Db.execSQL("CREATE INDEX IF NOT EXISTS `index_source_documents_campaignId` ON `source_documents` (`campaignId`)")
+        v2Db.execSQL(
+            "INSERT INTO source_documents (id, campaignId, sourceType, localPath, createdAtEpochMillis) " +
+                "VALUES (1, 1, 'GALLERY', '/data/test/existing.jpg', 12345)"
+        )
+        v2Db.version = 2
+        v2Db.close()
+
+        val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .build()
+
+        val campaign = runBlocking { migratedDb.campaignDao().getById(1L) }
+        val document = runBlocking { migratedDb.sourceDocumentDao().getById(1L) }
+        assertNotNull(campaign)
+        assertNotNull(document)
+        assertEquals("/data/test/existing.jpg", document?.localPath)
+
+        runBlocking {
+            migratedDb.ocrDao().replaceOcrResult(
+                OcrResultEntity(
+                    documentId = 1L,
+                    sourceWidthPx = 1000,
+                    sourceHeightPx = 2000,
+                    characterCount = 42,
+                    isLowText = false,
+                    processedAtEpochMillis = 999L
+                ),
+                listOf(
+                    OcrTextBlockEntity(
+                        documentId = 1L,
+                        pageIndex = 0,
+                        orderIndex = 0,
+                        text = "Hello",
+                        left = 1,
+                        top = 2,
+                        right = 3,
+                        bottom = 4
+                    )
+                )
+            )
+        }
+        val blocks = runBlocking { migratedDb.ocrDao().getBlocksForDocument(1L) }
+
+        assertEquals(1, blocks.size)
+        assertEquals("Hello", blocks[0].text)
 
         migratedDb.close()
     }

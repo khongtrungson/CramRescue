@@ -32,7 +32,7 @@ class AddMaterialViewModel(
         // not just ones added in this ViewModel instance's lifetime.
         viewModelScope.launch {
             val existing = sourceDocumentRepository.getDocumentsForCampaign(campaignId)
-                .map { MaterialPreviewItem(it.localPath, it.sourceType) }
+                .map { MaterialPreviewItem(it.id, it.localPath, it.sourceType) }
             if (existing.isNotEmpty()) {
                 _uiState.update { it.copy(addedMaterials = existing) }
             }
@@ -58,9 +58,9 @@ class AddMaterialViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             runCatching { saveDocument(path, SourceType.CAMERA) }
-                .onSuccess {
+                .onSuccess { id ->
                     _uiState.update {
-                        it.copy(isSaving = false, addedMaterials = it.addedMaterials + MaterialPreviewItem(path, SourceType.CAMERA))
+                        it.copy(isSaving = false, addedMaterials = it.addedMaterials + MaterialPreviewItem(id, path, SourceType.CAMERA))
                     }
                 }
                 .onFailure {
@@ -87,10 +87,10 @@ class AddMaterialViewModel(
             for (uri in uris) {
                 val result = runCatching {
                     val path = materialFileStore.copyFrom(uri)
-                    saveDocument(path, SourceType.GALLERY)
-                    path
+                    val id = saveDocument(path, SourceType.GALLERY)
+                    id to path
                 }
-                result.onSuccess { path -> newItems += MaterialPreviewItem(path, SourceType.GALLERY) }
+                result.onSuccess { (id, path) -> newItems += MaterialPreviewItem(id, path, SourceType.GALLERY) }
                     .onFailure { anyFailed = true }
             }
 
@@ -104,8 +104,8 @@ class AddMaterialViewModel(
         }
     }
 
-    private suspend fun saveDocument(path: String, sourceType: SourceType) {
-        sourceDocumentRepository.saveDocument(
+    private suspend fun saveDocument(path: String, sourceType: SourceType): Long {
+        return sourceDocumentRepository.saveDocument(
             SourceDocument(
                 campaignId = campaignId,
                 sourceType = sourceType,
