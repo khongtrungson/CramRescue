@@ -3,7 +3,7 @@ package com.example.cramrescue.data.mapper
 import com.example.cramrescue.data.local.entity.OcrResultEntity
 import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 import com.example.cramrescue.domain.model.BoundingBox
-import com.example.cramrescue.domain.model.OcrResult
+import com.example.cramrescue.domain.model.OcrPageResult
 import com.example.cramrescue.domain.model.OcrTextBlock
 import java.time.Instant
 
@@ -28,8 +28,9 @@ fun OcrTextBlockEntity.toDomain(): OcrTextBlock = OcrTextBlock(
     boundingBox = BoundingBox(left = left, top = top, right = right, bottom = bottom)
 )
 
-fun OcrResult.toEntity(): OcrResultEntity = OcrResultEntity(
+fun OcrPageResult.toEntity(): OcrResultEntity = OcrResultEntity(
     documentId = documentId,
+    pageIndex = pageIndex,
     sourceWidthPx = sourceWidthPx,
     sourceHeightPx = sourceHeightPx,
     characterCount = characterCount,
@@ -37,8 +38,9 @@ fun OcrResult.toEntity(): OcrResultEntity = OcrResultEntity(
     processedAtEpochMillis = processedAt.toEpochMilli()
 )
 
-fun OcrResultEntity.toDomain(blocks: List<OcrTextBlock>): OcrResult = OcrResult(
+fun OcrResultEntity.toDomain(blocks: List<OcrTextBlock>): OcrPageResult = OcrPageResult(
     documentId = documentId,
+    pageIndex = pageIndex,
     sourceWidthPx = sourceWidthPx,
     sourceHeightPx = sourceHeightPx,
     characterCount = characterCount,

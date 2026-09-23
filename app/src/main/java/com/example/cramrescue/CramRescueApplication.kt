@@ -4,10 +4,12 @@ import android.app.Application
 import com.example.cramrescue.data.local.MaterialFileStore
 import com.example.cramrescue.data.local.database.AppDatabase
 import com.example.cramrescue.data.ocr.MlKitTextRecognitionEngine
+import com.example.cramrescue.data.pdf.AndroidPdfPageRenderer
 import com.example.cramrescue.data.repository.CampaignRepositoryImpl
 import com.example.cramrescue.data.repository.OcrRepositoryImpl
 import com.example.cramrescue.data.repository.SourceDocumentRepositoryImpl
 import com.example.cramrescue.domain.ocr.TextRecognitionEngine
+import com.example.cramrescue.domain.pdf.PdfPageRenderer
 import com.example.cramrescue.domain.repository.CampaignRepository
 import com.example.cramrescue.domain.repository.OcrRepository
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
@@ -33,7 +35,14 @@ class CramRescueApplication : Application() {
 
     val textRecognitionEngine: TextRecognitionEngine by lazy { MlKitTextRecognitionEngine(this) }
 
+    val pdfPageRenderer: PdfPageRenderer by lazy { AndroidPdfPageRenderer(materialFileStore) }
+
     val processDocumentOcrUseCase: ProcessDocumentOcrUseCase by lazy {
-        ProcessDocumentOcrUseCase(sourceDocumentRepository, ocrRepository, textRecognitionEngine)
+        ProcessDocumentOcrUseCase(
+            sourceDocumentRepository,
+            ocrRepository,
+            textRecognitionEngine,
+            pdfPageRenderer
+        )
     }
 }

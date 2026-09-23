@@ -10,7 +10,9 @@ fun SourceDocument.toEntity(): SourceDocumentEntity = SourceDocumentEntity(
     campaignId = campaignId,
     sourceType = sourceType.name,
     localPath = localPath,
-    createdAtEpochMillis = createdAt.toEpochMilli()
+    createdAtEpochMillis = createdAt.toEpochMilli(),
+    pageCount = pageCount,
+    displayName = displayName
 )
 
 fun SourceDocumentEntity.toDomain(): SourceDocument = SourceDocument(
@@ -18,5 +20,7 @@ fun SourceDocumentEntity.toDomain(): SourceDocument = SourceDocument(
     campaignId = campaignId,
     sourceType = SourceType.valueOf(sourceType),
     localPath = localPath,
-    createdAt = Instant.ofEpochMilli(createdAtEpochMillis)
+    createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+    pageCount = pageCount,
+    displayName = displayName
 )

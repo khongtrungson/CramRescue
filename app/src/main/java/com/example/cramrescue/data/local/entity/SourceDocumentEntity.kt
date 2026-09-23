@@ -7,8 +7,8 @@ import androidx.room.PrimaryKey
 
 // Deletion behavior: CASCADE. A SourceDocument has no meaning without its owning Campaign,
 // so if a Campaign is ever deleted, its documents should go with it. There is no
-// delete-campaign feature yet (Milestone 4), but this keeps referential integrity honest
-// rather than leaving orphaned rows for a feature that doesn't exist yet.
+// delete-campaign feature yet, but this keeps referential integrity honest rather than
+// leaving orphaned rows for a feature that doesn't exist yet.
 @Entity(
     tableName = "source_documents",
     foreignKeys = [
@@ -26,5 +26,9 @@ data class SourceDocumentEntity(
     val campaignId: Long,
     val sourceType: String,
     val localPath: String,
-    val createdAtEpochMillis: Long
+    val createdAtEpochMillis: Long,
+    // Added in Milestone 6. Nullable so documents imported by Milestone 4/5 (always single-page
+    // images) migrate without a backfill; they are read back as 1 page.
+    val pageCount: Int? = null,
+    val displayName: String? = null
 )

@@ -43,15 +43,33 @@ class OcrDaoTest {
         )
     }
 
-    private fun insertDocument(campaignId: Long, path: String): Long = runBlocking {
-        database.sourceDocumentDao().insert(
-            SourceDocumentEntity(campaignId = campaignId, sourceType = "GALLERY", localPath = path, createdAtEpochMillis = 1L)
-        )
-    }
+    private fun insertDocument(campaignId: Long, path: String, type: String = "GALLERY", pages: Int = 1): Long =
+        runBlocking {
+            database.sourceDocumentDao().insert(
+                SourceDocumentEntity(
+                    campaignId = campaignId,
+                    sourceType = type,
+                    localPath = path,
+                    createdAtEpochMillis = 1L,
+                    pageCount = pages,
+                    displayName = if (type == "PDF") "doc.pdf" else null
+                )
+            )
+        }
 
-    private fun block(documentId: Long, orderIndex: Int, text: String) = OcrTextBlockEntity(
+    private fun pageResult(documentId: Long, pageIndex: Int, characterCount: Int = 100) = OcrResultEntity(
         documentId = documentId,
-        pageIndex = 0,
+        pageIndex = pageIndex,
+        sourceWidthPx = 1000,
+        sourceHeightPx = 1400,
+        characterCount = characterCount,
+        isLowText = characterCount < 50,
+        processedAtEpochMillis = 1L
+    )
+
+    private fun block(documentId: Long, pageIndex: Int, orderIndex: Int, text: String) = OcrTextBlockEntity(
+        documentId = documentId,
+        pageIndex = pageIndex,
         orderIndex = orderIndex,
         text = text,
         left = 0,
@@ -68,12 +86,14 @@ class OcrDaoTest {
         val documentB = insertDocument(campaignB, "/b.jpg")
 
         database.ocrDao().replaceOcrResult(
-            OcrResultEntity(documentA, 100, 200, 20, isLowText = true, processedAtEpochMillis = 1L),
-            listOf(block(documentA, 0, "A1"), block(documentA, 1, "A2"))
+            documentA,
+            listOf(pageResult(documentA, 0)),
+            listOf(block(documentA, 0, 0, "A1"), block(documentA, 0, 1, "A2"))
         )
         database.ocrDao().replaceOcrResult(
-            OcrResultEntity(documentB, 100, 200, 2, isLowText = true, processedAtEpochMillis = 1L),
-            listOf(block(documentB, 0, "B1"))
+            documentB,
+            listOf(pageResult(documentB, 0)),
+            listOf(block(documentB, 0, 0, "B1"))
         )
 
         val blocksA = database.ocrDao().getBlocksForDocument(documentA)
@@ -86,39 +106,86 @@ class OcrDaoTest {
     }
 
     @Test
-    fun reprocessingReplacesRatherThanDuplicatesBlocks() = runBlocking {
-        val campaignId = insertCampaign("Campaign")
-        val documentId = insertDocument(campaignId, "/a.jpg")
+    fun multiPagePdfKeepsPerPageResultsAndBlocksSeparated() = runBlocking {
+        val campaignA = insertCampaign("Campaign A")
+        val campaignB = insertCampaign("Campaign B")
+        val pdfA = insertDocument(campaignA, "/a.pdf", type = "PDF", pages = 2)
+        val pdfB = insertDocument(campaignB, "/b.pdf", type = "PDF", pages = 1)
 
         database.ocrDao().replaceOcrResult(
-            OcrResultEntity(documentId, 100, 200, 10, isLowText = true, processedAtEpochMillis = 1L),
-            listOf(block(documentId, 0, "first pass"))
+            pdfA,
+            listOf(pageResult(pdfA, 0, characterCount = 120), pageResult(pdfA, 1, characterCount = 30)),
+            listOf(
+                block(pdfA, 0, 0, "A0-block1"),
+                block(pdfA, 0, 1, "A0-block2"),
+                block(pdfA, 1, 0, "A1-block1")
+            )
         )
         database.ocrDao().replaceOcrResult(
-            OcrResultEntity(documentId, 100, 200, 11, isLowText = true, processedAtEpochMillis = 2L),
-            listOf(block(documentId, 0, "second pass"))
+            pdfB,
+            listOf(pageResult(pdfB, 0)),
+            listOf(block(pdfB, 0, 0, "B0-block1"))
         )
 
-        val blocks = database.ocrDao().getBlocksForDocument(documentId)
-        val result = database.ocrDao().getResult(documentId)
+        val pdfAPage0 = database.ocrDao().getBlocksForPage(pdfA, 0)
+        val pdfAPage1 = database.ocrDao().getBlocksForPage(pdfA, 1)
+        val pdfAPages = database.ocrDao().getPageResultsForDocument(pdfA)
 
-        assertEquals(1, blocks.size)
-        assertEquals("second pass", blocks[0].text)
-        assertEquals(11, result?.characterCount)
+        // Page 0 of PDF A must not leak page 1's block, nor anything from Campaign B's PDF.
+        assertEquals(listOf("A0-block1", "A0-block2"), pdfAPage0.map { it.text })
+        assertEquals(listOf("A1-block1"), pdfAPage1.map { it.text })
+        assertTrue(database.ocrDao().getBlocksForDocument(pdfA).none { it.text.startsWith("B0") })
+
+        // Per-page quality is preserved independently.
+        assertEquals(listOf(0, 1), pdfAPages.map { it.pageIndex })
+        assertEquals(false, pdfAPages[0].isLowText)
+        assertEquals(true, pdfAPages[1].isLowText)
+
+        assertEquals(1, database.ocrDao().getPageResultsForDocument(pdfB).size)
     }
 
     @Test
-    fun blockOrderIsPreserved() = runBlocking {
+    fun reprocessingReplacesRatherThanDuplicatesPagesAndBlocks() = runBlocking {
         val campaignId = insertCampaign("Campaign")
-        val documentId = insertDocument(campaignId, "/a.jpg")
+        val pdfId = insertDocument(campaignId, "/a.pdf", type = "PDF", pages = 2)
 
         database.ocrDao().replaceOcrResult(
-            OcrResultEntity(documentId, 100, 200, 30, isLowText = false, processedAtEpochMillis = 1L),
-            listOf(block(documentId, 2, "third"), block(documentId, 0, "first"), block(documentId, 1, "second"))
+            pdfId,
+            listOf(pageResult(pdfId, 0), pageResult(pdfId, 1)),
+            listOf(block(pdfId, 0, 0, "first pass p0"), block(pdfId, 1, 0, "first pass p1"))
+        )
+        database.ocrDao().replaceOcrResult(
+            pdfId,
+            listOf(pageResult(pdfId, 0), pageResult(pdfId, 1)),
+            listOf(block(pdfId, 0, 0, "second pass p0"), block(pdfId, 1, 0, "second pass p1"))
         )
 
-        val blocks = database.ocrDao().getBlocksForDocument(documentId)
+        val pages = database.ocrDao().getPageResultsForDocument(pdfId)
+        val blocks = database.ocrDao().getBlocksForDocument(pdfId)
 
-        assertEquals(listOf("first", "second", "third"), blocks.map { it.text })
+        assertEquals(2, pages.size)
+        assertEquals(2, blocks.size)
+        assertEquals(listOf("second pass p0", "second pass p1"), blocks.map { it.text })
+    }
+
+    @Test
+    fun blockOrderIsPreservedWithinAndAcrossPages() = runBlocking {
+        val campaignId = insertCampaign("Campaign")
+        val pdfId = insertDocument(campaignId, "/a.pdf", type = "PDF", pages = 2)
+
+        database.ocrDao().replaceOcrResult(
+            pdfId,
+            listOf(pageResult(pdfId, 0), pageResult(pdfId, 1)),
+            listOf(
+                block(pdfId, 1, 1, "p1-second"),
+                block(pdfId, 0, 1, "p0-second"),
+                block(pdfId, 1, 0, "p1-first"),
+                block(pdfId, 0, 0, "p0-first")
+            )
+        )
+
+        val blocks = database.ocrDao().getBlocksForDocument(pdfId)
+
+        assertEquals(listOf("p0-first", "p0-second", "p1-first", "p1-second"), blocks.map { it.text })
     }
 }

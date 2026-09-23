@@ -41,6 +41,8 @@ import com.example.cramrescue.presentation.material.decodeSampledBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private const val PDF_MIME_TYPE = "application/pdf"
+
 @Composable
 fun AddMaterialScreen(
     viewModelFactory: AddMaterialViewModelFactory,
@@ -58,6 +60,10 @@ fun AddMaterialScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success -> viewModel.onCameraResult(success) }
+
+    val pdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri -> viewModel.onPdfSelected(uri) }
 
     Column(
         modifier = Modifier
@@ -113,6 +119,15 @@ fun AddMaterialScreen(
             Text("Chụp bằng camera")
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { pdfLauncher.launch(arrayOf(PDF_MIME_TYPE)) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Chọn tệp PDF")
+        }
+
         if (uiState.isSaving) {
             Spacer(modifier = Modifier.height(16.dp))
             CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -134,13 +149,16 @@ fun AddMaterialScreen(
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow {
                 items(uiState.addedMaterials) { material ->
-                    MaterialThumbnail(
-                        path = material.path,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(96.dp)
-                            .clickable { onOpenMaterial(material.documentId) }
-                    )
+                    val tileModifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(96.dp)
+                        .clickable { onOpenMaterial(material.documentId) }
+
+                    if (material.isPdf) {
+                        PdfTile(pageCount = material.pageCount, modifier = tileModifier)
+                    } else {
+                        MaterialThumbnail(path = material.path, modifier = tileModifier)
+                    }
                 }
             }
         }
@@ -151,6 +169,28 @@ fun AddMaterialScreen(
             Button(onClick = onBackToCockpit, modifier = Modifier.fillMaxWidth()) {
                 Text("Về Buồng lái sinh tồn")
             }
+        }
+    }
+}
+
+@Composable
+private fun PdfTile(pageCount: Int, modifier: Modifier = Modifier) {
+    val shape = remember { RoundedCornerShape(8.dp) }
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant, shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "PDF",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "$pageCount trang",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

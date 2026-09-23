@@ -31,7 +31,15 @@ class MaterialDetailViewModel(
                 _uiState.update { it.copy(isLoadingDocument = false, documentNotFound = true) }
                 return@launch
             }
-            _uiState.update { it.copy(isLoadingDocument = false, documentPath = document.localPath) }
+            _uiState.update {
+                it.copy(
+                    isLoadingDocument = false,
+                    documentPath = document.localPath,
+                    sourceType = document.sourceType,
+                    displayName = document.displayName,
+                    pageCount = document.effectivePageCount
+                )
+            }
 
             // Show a previously persisted OCR result immediately, without rerunning OCR.
             ocrRepository.getResultForDocument(documentId)?.let { applyResult(it) }
@@ -42,8 +50,20 @@ class MaterialDetailViewModel(
         if (_uiState.value.isProcessingOcr) return // guard against duplicate concurrent processing
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isProcessingOcr = true, errorMessage = null) }
-            when (val outcome = processDocumentOcrUseCase(documentId)) {
+            _uiState.update {
+                it.copy(
+                    isProcessingOcr = true,
+                    errorMessage = null,
+                    processedPages = 0,
+                    totalPages = it.pageCount
+                )
+            }
+
+            val outcome = processDocumentOcrUseCase(documentId) { pagesDone, totalPages ->
+                _uiState.update { it.copy(processedPages = pagesDone, totalPages = totalPages) }
+            }
+
+            when (outcome) {
                 is ProcessDocumentOcrResult.Success -> {
                     applyResult(outcome.result)
                     _uiState.update { it.copy(isProcessingOcr = false) }
@@ -59,15 +79,16 @@ class MaterialDetailViewModel(
     }
 
     private fun applyResult(result: OcrResult) {
-        _uiState.update {
-            it.copy(
-                recognizedText = result.reconstructedText(),
-                characterCount = result.characterCount,
-                blockCount = result.blocks.size,
-                isLowText = result.isLowText,
-                hasNoText = result.blocks.isEmpty()
+        val pages = result.pages.sortedBy { it.pageIndex }.map { page ->
+            OcrPageUi(
+                pageNumber = page.pageIndex + 1,
+                characterCount = page.characterCount,
+                blockCount = page.blocks.size,
+                isLowText = page.isLowText,
+                text = page.reconstructedText()
             )
         }
+        _uiState.update { it.copy(pages = pages, hasResult = true) }
     }
 }
 

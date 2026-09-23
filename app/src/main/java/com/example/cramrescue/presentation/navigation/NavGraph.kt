@@ -102,6 +102,7 @@ fun NavGraph(navController: NavHostController) {
             val factory = AddMaterialViewModelFactory(
                 application.materialFileStore,
                 application.sourceDocumentRepository,
+                application.pdfPageRenderer,
                 campaignId
             )
             AddMaterialScreen(

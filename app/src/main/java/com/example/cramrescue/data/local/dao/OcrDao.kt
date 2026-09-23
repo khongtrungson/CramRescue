@@ -12,7 +12,7 @@ import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 interface OcrDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertResult(result: OcrResultEntity)
+    suspend fun upsertPageResults(pageResults: List<OcrResultEntity>)
 
     @Insert
     suspend fun insertBlocks(blocks: List<OcrTextBlockEntity>)
@@ -20,20 +20,34 @@ interface OcrDao {
     @Query("DELETE FROM ocr_text_blocks WHERE documentId = :documentId")
     suspend fun deleteBlocksForDocument(documentId: Long)
 
-    @Query("SELECT * FROM ocr_results WHERE documentId = :documentId")
-    suspend fun getResult(documentId: Long): OcrResultEntity?
+    @Query("DELETE FROM ocr_results WHERE documentId = :documentId")
+    suspend fun deletePageResultsForDocument(documentId: Long)
 
-    @Query("SELECT * FROM ocr_text_blocks WHERE documentId = :documentId ORDER BY orderIndex ASC")
+    @Query("SELECT * FROM ocr_results WHERE documentId = :documentId ORDER BY pageIndex ASC")
+    suspend fun getPageResultsForDocument(documentId: Long): List<OcrResultEntity>
+
+    @Query("SELECT * FROM ocr_text_blocks WHERE documentId = :documentId ORDER BY pageIndex ASC, orderIndex ASC")
     suspend fun getBlocksForDocument(documentId: Long): List<OcrTextBlockEntity>
 
+    @Query(
+        "SELECT * FROM ocr_text_blocks WHERE documentId = :documentId AND pageIndex = :pageIndex " +
+            "ORDER BY orderIndex ASC"
+    )
+    suspend fun getBlocksForPage(documentId: Long, pageIndex: Int): List<OcrTextBlockEntity>
+
     /**
-     * Replaces any previous OCR result for [OcrResultEntity.documentId] atomically, so
-     * reprocessing a document never leaves old and new blocks mixed together.
+     * Replaces the entire OCR result for [documentId] atomically, so reprocessing a document (of
+     * any page count) never leaves old and new pages/blocks mixed together or duplicated.
      */
     @Transaction
-    suspend fun replaceOcrResult(result: OcrResultEntity, blocks: List<OcrTextBlockEntity>) {
-        deleteBlocksForDocument(result.documentId)
-        upsertResult(result)
+    suspend fun replaceOcrResult(
+        documentId: Long,
+        pageResults: List<OcrResultEntity>,
+        blocks: List<OcrTextBlockEntity>
+    ) {
+        deleteBlocksForDocument(documentId)
+        deletePageResultsForDocument(documentId)
+        upsertPageResults(pageResults)
         insertBlocks(blocks)
     }
 }

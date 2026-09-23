@@ -11,12 +11,24 @@ class OcrRepositoryImpl(
 ) : OcrRepository {
 
     override suspend fun saveResult(result: OcrResult) {
-        ocrDao.replaceOcrResult(result.toEntity(), result.blocks.map { it.toEntity() })
+        ocrDao.replaceOcrResult(
+            documentId = result.documentId,
+            pageResults = result.pages.map { it.toEntity() },
+            blocks = result.pages.flatMap { page -> page.blocks.map { it.toEntity() } }
+        )
     }
 
     override suspend fun getResultForDocument(documentId: Long): OcrResult? {
-        val resultEntity = ocrDao.getResult(documentId) ?: return null
-        val blocks = ocrDao.getBlocksForDocument(documentId).map { it.toDomain() }
-        return resultEntity.toDomain(blocks)
+        val pageEntities = ocrDao.getPageResultsForDocument(documentId)
+        if (pageEntities.isEmpty()) return null
+
+        val blocksByPage = ocrDao.getBlocksForDocument(documentId)
+            .map { it.toDomain() }
+            .groupBy { it.pageIndex }
+
+        return OcrResult(
+            documentId = documentId,
+            pages = pageEntities.map { page -> page.toDomain(blocksByPage[page.pageIndex].orEmpty()) }
+        )
     }
 }

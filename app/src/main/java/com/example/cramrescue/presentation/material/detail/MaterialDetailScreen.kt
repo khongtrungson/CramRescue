@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cramrescue.presentation.material.decodeSampledBitmap
@@ -62,14 +63,22 @@ fun MaterialDetailScreen(
             )
 
             else -> {
-                val path = uiState.documentPath
-                if (path != null) {
-                    MaterialFullPreview(
-                        path = path,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(280.dp)
+                if (uiState.isPdf) {
+                    PdfSummary(
+                        displayName = uiState.displayName,
+                        pageCount = uiState.pageCount,
+                        modifier = Modifier.fillMaxWidth()
                     )
+                } else {
+                    val path = uiState.documentPath
+                    if (path != null) {
+                        MaterialFullPreview(
+                            path = path,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(280.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -85,6 +94,15 @@ fun MaterialDetailScreen(
                 if (uiState.isProcessingOcr) {
                     Spacer(modifier = Modifier.height(16.dp))
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    if (uiState.totalPages > 1) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Đang xử lý trang ${uiState.processedPages.coerceAtLeast(1)}/${uiState.totalPages}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
                 }
 
                 val error = uiState.errorMessage
@@ -93,45 +111,91 @@ fun MaterialDetailScreen(
                     Text(text = error, color = MaterialTheme.colorScheme.error)
                 }
 
-                val text = uiState.recognizedText
-                if (text != null) {
+                if (uiState.hasResult) {
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    if (uiState.isLowText) {
-                        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
-                            Text(
-                                text = "Văn bản nhận diện được quá ít (${uiState.characterCount} ký tự). " +
-                                    "Ảnh có thể bị mờ hoặc chụp thiếu — hãy thử chụp lại.",
-                                modifier = Modifier.padding(12.dp),
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    } else if (uiState.hasNoText) {
-                        Text(
-                            text = "Không nhận diện được văn bản nào trong ảnh này.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
                     Text(
-                        text = "Văn bản nhận diện (${uiState.blockCount} khối, ${uiState.characterCount} ký tự)",
+                        text = "Văn bản nhận diện (${uiState.pages.size} trang, ${uiState.totalCharacterCount} ký tự)",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
-                        Text(
-                            text = text.ifBlank { "(trống)" },
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+
+                    uiState.pages.forEach { page ->
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OcrPageSection(page = page)
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun OcrPageSection(page: OcrPageUi) {
+    Text(
+        text = "Trang ${page.pageNumber} — ${page.blockCount} khối, ${page.characterCount} ký tự",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onBackground
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (page.isLowText) {
+        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
+            Text(
+                text = if (page.characterCount == 0) {
+                    "Không nhận diện được văn bản nào ở trang này."
+                } else {
+                    "Văn bản nhận diện được quá ít (${page.characterCount} ký tự). " +
+                        "Trang này có thể bị mờ hoặc chụp thiếu."
+                },
+                modifier = Modifier.padding(12.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    if (page.text.isNotBlank()) {
+        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
+            Text(
+                text = page.text,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun PdfSummary(displayName: String?, pageCount: Int, modifier: Modifier = Modifier) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Tài liệu PDF",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = displayName ?: "(không có tên tệp)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$pageCount trang",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

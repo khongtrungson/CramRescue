@@ -21,7 +21,7 @@ import com.example.cramrescue.data.local.entity.SourceDocumentEntity
         OcrResultEntity::class,
         OcrTextBlockEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -95,6 +95,49 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone 6: PDF ingestion.
+        //  - source_documents gains pageCount/displayName (nullable, so existing single-page
+        //    image rows migrate without a backfill and read back as 1 page).
+        //  - ocr_results becomes one row per (document, page) instead of one row per document,
+        //    so each PDF page keeps its own render dimensions and its own low-text flag. SQLite
+        //    can't change a primary key in place, so the table is recreated and existing rows are
+        //    carried over as page 0. Campaign / SourceDocument / OCR block data is preserved.
+        val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `source_documents` ADD COLUMN `pageCount` INTEGER")
+                db.execSQL("ALTER TABLE `source_documents` ADD COLUMN `displayName` TEXT")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `ocr_results_new` (
+                        `documentId` INTEGER NOT NULL,
+                        `pageIndex` INTEGER NOT NULL,
+                        `sourceWidthPx` INTEGER NOT NULL,
+                        `sourceHeightPx` INTEGER NOT NULL,
+                        `characterCount` INTEGER NOT NULL,
+                        `isLowText` INTEGER NOT NULL,
+                        `processedAtEpochMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`documentId`, `pageIndex`),
+                        FOREIGN KEY(`documentId`) REFERENCES `source_documents`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `ocr_results_new` (
+                        `documentId`, `pageIndex`, `sourceWidthPx`, `sourceHeightPx`,
+                        `characterCount`, `isLowText`, `processedAtEpochMillis`
+                    )
+                    SELECT `documentId`, 0, `sourceWidthPx`, `sourceHeightPx`,
+                           `characterCount`, `isLowText`, `processedAtEpochMillis`
+                    FROM `ocr_results`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `ocr_results`")
+                db.execSQL("ALTER TABLE `ocr_results_new` RENAME TO `ocr_results`")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -105,7 +148,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { instance = it }
             }
     }

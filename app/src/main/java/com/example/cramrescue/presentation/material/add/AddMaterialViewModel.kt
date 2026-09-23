@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cramrescue.data.local.MaterialFileStore
+import com.example.cramrescue.domain.model.MAX_DOCUMENT_PAGES
 import com.example.cramrescue.domain.model.SourceDocument
 import com.example.cramrescue.domain.model.SourceType
+import com.example.cramrescue.domain.pdf.PdfPageRenderer
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
 import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,7 @@ const val MAX_GALLERY_SELECTION = 20
 class AddMaterialViewModel(
     private val materialFileStore: MaterialFileStore,
     private val sourceDocumentRepository: SourceDocumentRepository,
+    private val pdfPageRenderer: PdfPageRenderer,
     private val campaignId: Long
 ) : ViewModel() {
 
@@ -32,7 +35,15 @@ class AddMaterialViewModel(
         // not just ones added in this ViewModel instance's lifetime.
         viewModelScope.launch {
             val existing = sourceDocumentRepository.getDocumentsForCampaign(campaignId)
-                .map { MaterialPreviewItem(it.id, it.localPath, it.sourceType) }
+                .map {
+                    MaterialPreviewItem(
+                        documentId = it.id,
+                        path = it.localPath,
+                        source = it.sourceType,
+                        displayName = it.displayName,
+                        pageCount = it.effectivePageCount
+                    )
+                }
             if (existing.isNotEmpty()) {
                 _uiState.update { it.copy(addedMaterials = existing) }
             }
@@ -104,13 +115,79 @@ class AddMaterialViewModel(
         }
     }
 
-    private suspend fun saveDocument(path: String, sourceType: SourceType): Long {
+    /**
+     * Imports a picked PDF: copy into app storage, read its page count, enforce the 20-page
+     * product limit, then persist it as a SourceDocument owned by this campaign. The copied file
+     * is removed again if the PDF turns out to be unreadable or oversized, so a rejected import
+     * leaves nothing behind.
+     */
+    fun onPdfSelected(uri: Uri?) {
+        if (uri == null) return // user cancelled — no-op
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+
+            val displayName = materialFileStore.readDisplayName(uri)
+
+            val path = runCatching { materialFileStore.copyPdfFrom(uri) }.getOrElse {
+                _uiState.update { state -> state.copy(isSaving = false, errorMessage = "Không thể đọc tệp PDF đã chọn.") }
+                return@launch
+            }
+
+            val pageCount = runCatching { pdfPageRenderer.withDocument(path) { it.pageCount } }.getOrElse {
+                materialFileStore.delete(path)
+                _uiState.update { state ->
+                    state.copy(
+                        isSaving = false,
+                        errorMessage = "Không mở được tệp PDF này. Tệp có thể bị hỏng hoặc được đặt mật khẩu."
+                    )
+                }
+                return@launch
+            }
+
+            if (pageCount > MAX_DOCUMENT_PAGES) {
+                materialFileStore.delete(path)
+                _uiState.update { state ->
+                    state.copy(
+                        isSaving = false,
+                        errorMessage = "Tệp PDF có $pageCount trang, vượt quá giới hạn $MAX_DOCUMENT_PAGES trang. " +
+                            "Vui lòng tách tệp và chọn tối đa $MAX_DOCUMENT_PAGES trang trọng tâm."
+                    )
+                }
+                return@launch
+            }
+
+            runCatching { saveDocument(path, SourceType.PDF, pageCount = pageCount, displayName = displayName) }
+                .onSuccess { id ->
+                    _uiState.update { state ->
+                        state.copy(
+                            isSaving = false,
+                            addedMaterials = state.addedMaterials +
+                                MaterialPreviewItem(id, path, SourceType.PDF, displayName, pageCount)
+                        )
+                    }
+                }
+                .onFailure {
+                    materialFileStore.delete(path)
+                    _uiState.update { state -> state.copy(isSaving = false, errorMessage = "Không thể lưu tệp PDF.") }
+                }
+        }
+    }
+
+    private suspend fun saveDocument(
+        path: String,
+        sourceType: SourceType,
+        pageCount: Int = 1,
+        displayName: String? = null
+    ): Long {
         return sourceDocumentRepository.saveDocument(
             SourceDocument(
                 campaignId = campaignId,
                 sourceType = sourceType,
                 localPath = path,
-                createdAt = Instant.now()
+                createdAt = Instant.now(),
+                pageCount = pageCount,
+                displayName = displayName
             )
         )
     }
@@ -119,10 +196,11 @@ class AddMaterialViewModel(
 class AddMaterialViewModelFactory(
     private val materialFileStore: MaterialFileStore,
     private val sourceDocumentRepository: SourceDocumentRepository,
+    private val pdfPageRenderer: PdfPageRenderer,
     private val campaignId: Long
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return AddMaterialViewModel(materialFileStore, sourceDocumentRepository, campaignId) as T
+        return AddMaterialViewModel(materialFileStore, sourceDocumentRepository, pdfPageRenderer, campaignId) as T
     }
 }

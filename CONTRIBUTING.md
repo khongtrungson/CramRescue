@@ -150,6 +150,16 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - New schemas/APIs should stay multi-campaign-ready even while multi-campaign *management* UI
   doesn't exist yet: query shapes like `getXForCampaign(campaignId)`, not `getLatestX()`.
 
+## Document / Page Ownership
+
+- A document belongs to exactly one Campaign; a page belongs to exactly one SourceDocument.
+- OCR data must remain traceable to its source document *and* page.
+- Feature code uses explicit ids — never "latest document/campaign" assumptions.
+- Page indices use one internal convention: **0-based in domain and storage**, displayed as
+  page N+1 in the UI. Don't mix the two.
+- PDF rendering must preserve a coordinate relationship suitable for future Source Grounding:
+  bounding boxes are relative to the rendered page bitmap, whose dimensions are stored per page.
+
 ## OCR Source Coordinates
 
 - OCR spatial data must remain traceable to its SourceDocument/page.
