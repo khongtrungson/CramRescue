@@ -1,5 +1,6 @@
 package com.example.cramrescue.presentation.microcard.detail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +27,8 @@ import com.example.cramrescue.presentation.analysis.TriageBadge
 @Composable
 fun MicroCardDetailScreen(
     viewModelFactory: MicroCardDetailViewModelFactory,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenSource: (documentId: Long, pageIndex: Int) -> Unit
 ) {
     val viewModel: MicroCardDetailViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -101,19 +103,24 @@ fun MicroCardDetailScreen(
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenSource(source.documentId, source.pageIndex) }
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = source.location,
+                                text = "${source.location} · ${source.blockCount} khối — Đối chiếu nguồn ›",
                                 style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = source.snippet?.let { "“$it”" } ?: "(khối văn bản này đã thay đổi hoặc bị xóa)",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            source.snippets.forEach { snippet ->
+                                Text(
+                                    text = snippet?.let { "“$it”" } ?: "(khối văn bản này đã thay đổi hoặc bị xóa)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

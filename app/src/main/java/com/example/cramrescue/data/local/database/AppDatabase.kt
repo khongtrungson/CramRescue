@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.cramrescue.data.local.dao.CampaignDao
 import com.example.cramrescue.data.local.dao.MicroCardDao
+import com.example.cramrescue.data.local.dao.MicroMissionDao
 import com.example.cramrescue.data.local.dao.OcrDao
 import com.example.cramrescue.data.local.dao.SourceDocumentDao
 import com.example.cramrescue.data.local.dao.StudyAnalysisDao
@@ -18,6 +19,7 @@ import com.example.cramrescue.data.local.entity.CampaignAnalysisEntity
 import com.example.cramrescue.data.local.entity.CampaignEntity
 import com.example.cramrescue.data.local.entity.MicroCardEntity
 import com.example.cramrescue.data.local.entity.MicroCardSourceRefEntity
+import com.example.cramrescue.data.local.entity.MicroMissionEntity
 import com.example.cramrescue.data.local.entity.OcrResultEntity
 import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 import com.example.cramrescue.data.local.entity.SourceDocumentEntity
@@ -34,9 +36,10 @@ import com.example.cramrescue.data.local.entity.StudyAttemptEntity
         AnalysisSourceRefEntity::class,
         MicroCardEntity::class,
         MicroCardSourceRefEntity::class,
-        StudyAttemptEntity::class
+        StudyAttemptEntity::class,
+        MicroMissionEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun studyAnalysisDao(): StudyAnalysisDao
     abstract fun microCardDao(): MicroCardDao
     abstract fun studyAttemptDao(): StudyAttemptDao
+    abstract fun microMissionDao(): MicroMissionDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -282,6 +286,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone 10: Micro-missions (FR-10 pause/resume). Adds micro_missions only; no existing
+        // table is altered, so all M2–M9 data (including study_attempts) is untouched.
+        val MIGRATION_7_8: Migration = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `micro_missions` (
+                        `campaignId` INTEGER NOT NULL,
+                        `cardIds` TEXT NOT NULL,
+                        `baselineAttemptId` INTEGER NOT NULL,
+                        `startedAtEpochMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`campaignId`),
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -292,7 +315,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build().also { instance = it }
             }
     }

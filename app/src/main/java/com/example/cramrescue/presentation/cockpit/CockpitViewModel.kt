@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cramrescue.domain.model.CampaignCountdown
 import com.example.cramrescue.domain.repository.CampaignRepository
+import com.example.cramrescue.domain.usecase.mission.GetStudyPlanUseCase
+import com.example.cramrescue.domain.usecase.mission.StartMicroMissionUseCase
+import com.example.cramrescue.domain.usecase.mission.StartMissionResult
 import java.time.Clock
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -20,6 +23,8 @@ private val TICK_INTERVAL_MILLIS = 1000L
 class CockpitViewModel(
     private val campaignRepository: CampaignRepository,
     private val campaignId: Long,
+    private val getStudyPlan: GetStudyPlanUseCase,
+    private val startMicroMission: StartMicroMissionUseCase,
     private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
@@ -36,7 +41,8 @@ class CockpitViewModel(
 
             _uiState.update { it.copy(isLoading = false, campaign = campaign) }
 
-            // Recompute remaining time from the exam timestamp on every tick rather than
+            // Recompute remaining time from the exam timestamp on every tick. Study data (Pass
+            // Probability, mission) is NOT reloaded here — see refreshStudyPlan(). rather than
             // decrementing a stored value, so drift can't accumulate and re-entry is safe.
             while (isActive) {
                 val countdown = CampaignCountdown.from(campaign.examDateTime, Instant.now(clock))
@@ -45,14 +51,41 @@ class CockpitViewModel(
             }
         }
     }
+
+    /** Local read of study state, on screen (re)entry — e.g. back from a mission. Never calls Gemini. */
+    fun refreshStudyPlan() {
+        viewModelScope.launch {
+            val plan = getStudyPlan(campaignId)
+            _uiState.update { it.copy(studyPlan = plan) }
+        }
+    }
+
+    /** Explicit "Bắt đầu / Tiếp tục nhiệm vụ". [onReady] navigates to the mission's Active Recall. */
+    fun startMission(onReady: () -> Unit) {
+        if (_uiState.value.isStartingMission) return
+        _uiState.update { it.copy(isStartingMission = true, missionMessage = null) }
+        viewModelScope.launch {
+            val result = startMicroMission(campaignId)
+            val message = when (result) {
+                is StartMissionResult.Started, is StartMissionResult.Resumed -> null
+                StartMissionResult.NothingToStudy -> "Không còn thẻ nào cần ôn trong nhiệm vụ."
+                StartMissionResult.ExamReached -> "Đã đến giờ thi."
+                StartMissionResult.CampaignNotFound -> "Không tìm thấy chiến dịch."
+            }
+            _uiState.update { it.copy(isStartingMission = false, missionMessage = message) }
+            if (message == null) onReady()
+        }
+    }
 }
 
 class CockpitViewModelFactory(
     private val campaignRepository: CampaignRepository,
-    private val campaignId: Long
+    private val campaignId: Long,
+    private val getStudyPlan: GetStudyPlanUseCase,
+    private val startMicroMission: StartMicroMissionUseCase
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return CockpitViewModel(campaignRepository, campaignId) as T
+        return CockpitViewModel(campaignRepository, campaignId, getStudyPlan, startMicroMission) as T
     }
 }

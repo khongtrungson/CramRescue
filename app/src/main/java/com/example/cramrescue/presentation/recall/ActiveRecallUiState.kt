@@ -3,6 +3,7 @@ package com.example.cramrescue.presentation.recall
 import com.example.cramrescue.domain.model.RecallAssessment
 import com.example.cramrescue.domain.model.TriageLevel
 import com.example.cramrescue.domain.recall.ClozeSegment
+import com.example.cramrescue.presentation.microcard.SourceGroupUi
 
 /** FR-12 labels, verbatim from requirements.md. */
 fun RecallAssessment.label(): String = when (this) {
@@ -26,8 +27,8 @@ data class RevealedUi(
     val answers: List<String>,
     val bullets: List<String>,
     val notes: String?,
-    /** One line per document page, e.g. "1.pdf · Trang 1 (8 khối)". */
-    val sourceLabels: List<String>
+    /** Cited document pages; tapping one opens Source Grounding. Exists only after Reveal. */
+    val sourceGroups: List<SourceGroupUi>
 )
 
 sealed interface ActiveRecallUiState {
@@ -36,6 +37,8 @@ sealed interface ActiveRecallUiState {
     data class NoCards(val message: String) : ActiveRecallUiState
 
     data class Studying(
+        val cardId: Long,
+        val isMission: Boolean,
         val position: Int,
         val total: Int,
         /** The cards came from an older analysis / changed material (M8 stale rule). */
@@ -50,5 +53,9 @@ sealed interface ActiveRecallUiState {
         val errorMessage: String?
     ) : ActiveRecallUiState
 
-    data class Completed(val total: Int, val counts: Map<RecallAssessment, Int>) : ActiveRecallUiState
+    data class Completed(
+        val total: Int,
+        val counts: Map<RecallAssessment, Int>,
+        val isMission: Boolean
+    ) : ActiveRecallUiState
 }

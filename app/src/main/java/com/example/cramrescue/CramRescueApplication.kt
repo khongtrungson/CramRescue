@@ -8,6 +8,7 @@ import com.example.cramrescue.data.pdf.AndroidPdfPageRenderer
 import com.example.cramrescue.data.remote.GeminiStudyAnalysisClient
 import com.example.cramrescue.data.repository.GeminiCredentialRepositoryImpl
 import com.example.cramrescue.data.repository.MicroCardRepositoryImpl
+import com.example.cramrescue.data.repository.MicroMissionRepositoryImpl
 import com.example.cramrescue.data.repository.CampaignRepositoryImpl
 import com.example.cramrescue.data.repository.OcrRepositoryImpl
 import com.example.cramrescue.data.repository.SourceDocumentRepositoryImpl
@@ -26,9 +27,14 @@ import com.example.cramrescue.domain.repository.StudyAttemptRepository
 import com.example.cramrescue.domain.usecase.analysis.GenerateCampaignAnalysisUseCase
 import com.example.cramrescue.domain.usecase.analysis.GetAnalysisSourceUseCase
 import com.example.cramrescue.domain.usecase.analysis.GetCampaignAnalysisUseCase
+import com.example.cramrescue.domain.usecase.grounding.GetGroundedSourceUseCase
 import com.example.cramrescue.domain.usecase.material.DeleteSourceDocumentUseCase
+import com.example.cramrescue.presentation.grounding.SourcePageLoader
 import com.example.cramrescue.domain.usecase.microcard.CreateMicroCardsUseCase
 import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
+import com.example.cramrescue.domain.usecase.mission.GetMissionCardsUseCase
+import com.example.cramrescue.domain.usecase.mission.GetStudyPlanUseCase
+import com.example.cramrescue.domain.usecase.mission.StartMicroMissionUseCase
 import com.example.cramrescue.domain.usecase.ocr.ProcessDocumentOcrUseCase
 import com.example.cramrescue.domain.usecase.recall.RecordRecallAssessmentUseCase
 import com.example.cramrescue.domain.usecase.settings.CheckStoredGeminiCredentialUseCase
@@ -125,4 +131,26 @@ class CramRescueApplication : Application() {
     val recordRecallAssessmentUseCase: RecordRecallAssessmentUseCase by lazy {
         RecordRecallAssessmentUseCase(studyAttemptRepository)
     }
+
+    // Milestone 10: Pass Probability + Micro-missions. Local and read-only except mission start.
+    private val microMissionRepository by lazy { MicroMissionRepositoryImpl(database.microMissionDao()) }
+
+    val getStudyPlanUseCase: GetStudyPlanUseCase by lazy {
+        GetStudyPlanUseCase(getMicroCardsUseCase, studyAttemptRepository, microMissionRepository)
+    }
+
+    val startMicroMissionUseCase: StartMicroMissionUseCase by lazy {
+        StartMicroMissionUseCase(campaignRepository, getMicroCardsUseCase, studyAttemptRepository, microMissionRepository)
+    }
+
+    val getMissionCardsUseCase: GetMissionCardsUseCase by lazy {
+        GetMissionCardsUseCase(getMicroCardsUseCase, studyAttemptRepository, microMissionRepository)
+    }
+
+    // Milestone 11: Source Grounding. Read-only: no OCR, no AI, no network, no file writes.
+    val getGroundedSourceUseCase: GetGroundedSourceUseCase by lazy {
+        GetGroundedSourceUseCase(getMicroCardsUseCase, sourceDocumentRepository, ocrRepository)
+    }
+
+    val sourcePageLoader: SourcePageLoader by lazy { SourcePageLoader(pdfPageRenderer) }
 }

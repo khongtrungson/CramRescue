@@ -11,6 +11,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import com.example.cramrescue.data.repository.MicroCardRepositoryImpl
+import com.example.cramrescue.data.repository.MicroMissionRepositoryImpl
+import com.example.cramrescue.domain.mission.MicroMission
 import com.example.cramrescue.data.repository.StudyAnalysisRepositoryImpl
 import com.example.cramrescue.data.repository.StudyAttemptRepositoryImpl
 import com.example.cramrescue.domain.model.RecallAssessment
@@ -74,7 +76,7 @@ class AppDatabaseMigrationTest {
         v1Db.close()
 
         val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
             .build()
 
         val campaign = runBlocking { migratedDb.campaignDao().getById(1L) }
@@ -144,7 +146,7 @@ class AppDatabaseMigrationTest {
         v2Db.close()
 
         val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
             .build()
 
         val campaign = runBlocking { migratedDb.campaignDao().getById(1L) }
@@ -273,7 +275,7 @@ class AppDatabaseMigrationTest {
         v3Db.close()
 
         val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
             .build()
 
         // Campaign and SourceDocument survive; the new columns default to null and read as 1 page.
@@ -410,7 +412,8 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
                 AppDatabase.MIGRATION_5_6,
-                AppDatabase.MIGRATION_6_7
+                AppDatabase.MIGRATION_6_7,
+                AppDatabase.MIGRATION_7_8
             )
             .build()
 
@@ -492,7 +495,8 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
                 AppDatabase.MIGRATION_5_6,
-                AppDatabase.MIGRATION_6_7
+                AppDatabase.MIGRATION_6_7,
+                AppDatabase.MIGRATION_7_8
             )
             .build()
 
@@ -574,7 +578,8 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
                 AppDatabase.MIGRATION_5_6,
-                AppDatabase.MIGRATION_6_7
+                AppDatabase.MIGRATION_6_7,
+                AppDatabase.MIGRATION_7_8
             )
             .build()
 
@@ -600,6 +605,77 @@ class AppDatabaseMigrationTest {
             )
         }
         assertEquals(listOf(RecallAssessment.PARTIAL), runBlocking { attempts.getAttemptsForCard(1L, cards[0].id) }.map { it.assessment })
+
+        migratedDb.close()
+    }
+
+    /**
+     * Verifies MIGRATION_7_8 (Milestone 10) on a REAL v7 file (M6 tables + the real M7, M8 and M9
+     * migrations) holding cards and study history. Everything survives; micro_missions is added.
+     */
+    @Test
+    fun migratingFromVersion7PreservesStudyHistoryAndAddsMicroMissions() {
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(databaseName)
+                .callback(object : SupportSQLiteOpenHelper.Callback(4) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("CREATE TABLE `campaigns` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `subjectArchetype` TEXT NOT NULL, `examDateTimeEpochMillis` INTEGER NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL)")
+                        db.execSQL("CREATE TABLE `source_documents` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `campaignId` INTEGER NOT NULL, `sourceType` TEXT NOT NULL, `localPath` TEXT NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `pageCount` INTEGER, `displayName` TEXT, FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                        db.execSQL("CREATE INDEX `index_source_documents_campaignId` ON `source_documents` (`campaignId`)")
+                        db.execSQL("CREATE TABLE `ocr_results` (`documentId` INTEGER NOT NULL, `pageIndex` INTEGER NOT NULL, `sourceWidthPx` INTEGER NOT NULL, `sourceHeightPx` INTEGER NOT NULL, `characterCount` INTEGER NOT NULL, `isLowText` INTEGER NOT NULL, `processedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`documentId`, `pageIndex`), FOREIGN KEY(`documentId`) REFERENCES `source_documents`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                        db.execSQL("CREATE TABLE `ocr_text_blocks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `documentId` INTEGER NOT NULL, `pageIndex` INTEGER NOT NULL, `orderIndex` INTEGER NOT NULL, `text` TEXT NOT NULL, `left` INTEGER NOT NULL, `top` INTEGER NOT NULL, `right` INTEGER NOT NULL, `bottom` INTEGER NOT NULL, FOREIGN KEY(`documentId`) REFERENCES `source_documents`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                        db.execSQL("CREATE INDEX `index_ocr_text_blocks_documentId` ON `ocr_text_blocks` (`documentId`)")
+                    }
+
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                })
+                .build()
+        )
+        val v7 = helper.writableDatabase
+        AppDatabase.MIGRATION_4_5.migrate(v7)
+        AppDatabase.MIGRATION_5_6.migrate(v7)
+        AppDatabase.MIGRATION_6_7.migrate(v7)
+        v7.execSQL("INSERT INTO campaigns VALUES (1, 'M9 Campaign', 'PROGRAMMING_TECH', 1000000, 500000)")
+        v7.execSQL("INSERT INTO source_documents VALUES (1, 1, 'PDF', '/data/test/notes.pdf', 200, 2, 'notes.pdf')")
+        v7.execSQL("INSERT INTO ocr_results VALUES (1, 0, 1414, 2000, 300, 0, 777), (1, 1, 1414, 2000, 250, 0, 777)")
+        v7.execSQL("INSERT INTO ocr_text_blocks (documentId, pageIndex, orderIndex, text, `left`, `top`, `right`, `bottom`) VALUES (1, 0, 0, 'P0', 1, 2, 3, 4), (1, 1, 0, 'P1', 5, 6, 7, 8)")
+        v7.execSQL("INSERT INTO campaign_analyses VALUES (1, 'Summary', 0, 2, 0, 'fp', 'gemini-3.5-flash', 9000)")
+        v7.execSQL("INSERT INTO analysis_priorities VALUES (1, 1, 0, 'CODE_RED', 'Topic', 'b1', NULL)")
+        v7.execSQL("INSERT INTO analysis_source_refs VALUES (1, 1, 1, 0, 0)")
+        v7.execSQL("INSERT INTO micro_cards VALUES (1, 1, 9000, 0, 'CODE_RED', 'Topic', 'b1', NULL, 9500), (2, 1, 9000, 1, 'CODE_YELLOW', 'Other', 'b2', NULL, 9500)")
+        v7.execSQL("INSERT INTO micro_card_source_refs VALUES (1, 1, 1, 0, 0), (2, 2, 1, 1, 0)")
+        v7.execSQL("INSERT INTO study_attempts VALUES (1, 1, 1, 'CODE_RED', 'Topic', 'NOT_REMEMBERED', 10000), (2, 1, 1, 'CODE_RED', 'Topic', 'MASTERED', 11000), (3, 1, NULL, 'CODE_RED', 'Old card', 'PARTIAL', 5000)")
+        v7.version = 7
+        helper.close()
+
+        val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
+            .addMigrations(
+                AppDatabase.MIGRATION_1_2,
+                AppDatabase.MIGRATION_2_3,
+                AppDatabase.MIGRATION_3_4,
+                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_5_6,
+                AppDatabase.MIGRATION_6_7,
+                AppDatabase.MIGRATION_7_8
+            )
+            .build()
+
+        assertEquals("M9 Campaign", runBlocking { migratedDb.campaignDao().getById(1L) }?.name)
+        assertEquals(listOf(0, 1), runBlocking { migratedDb.ocrDao().getPageResultsForDocument(1L) }.map { it.pageIndex })
+        assertEquals(1, runBlocking { StudyAnalysisRepositoryImpl(migratedDb.studyAnalysisDao()).getAnalysisForCampaign(1L) }?.priorities?.size)
+        assertEquals(listOf("Topic", "Other"), runBlocking { MicroCardRepositoryImpl(migratedDb.microCardDao()).getCardsForCampaign(1L) }.map { it.title })
+        // Study history survives intact, including the unlinked attempt of a replaced card.
+        val history = runBlocking { StudyAttemptRepositoryImpl(migratedDb.studyAttemptDao()).getAttemptsForCampaign(1L) }
+        assertEquals(listOf(RecallAssessment.PARTIAL, RecallAssessment.NOT_REMEMBERED, RecallAssessment.MASTERED), history.map { it.assessment })
+        assertEquals(listOf(null, 1L, 1L), history.map { it.microCardId })
+
+        // micro_missions starts empty and stores a mission.
+        val missions = MicroMissionRepositoryImpl(migratedDb.microMissionDao())
+        assertEquals(null, runBlocking { missions.getMission(1L) })
+        val mission = MicroMission(1L, listOf(2L, 1L), baselineAttemptId = 3L, startedAt = Instant.ofEpochMilli(12_000))
+        runBlocking { missions.saveMission(mission) }
+        assertEquals(mission, runBlocking { missions.getMission(1L) })
 
         migratedDb.close()
     }

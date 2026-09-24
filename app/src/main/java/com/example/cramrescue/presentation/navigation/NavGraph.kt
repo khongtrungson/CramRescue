@@ -27,6 +27,8 @@ import com.example.cramrescue.presentation.microcard.detail.MicroCardDetailScree
 import com.example.cramrescue.presentation.microcard.detail.MicroCardDetailViewModelFactory
 import com.example.cramrescue.presentation.microcard.list.MicroCardsScreen
 import com.example.cramrescue.presentation.microcard.list.MicroCardsViewModelFactory
+import com.example.cramrescue.presentation.grounding.SourceGroundingScreen
+import com.example.cramrescue.presentation.grounding.SourceGroundingViewModelFactory
 import com.example.cramrescue.presentation.recall.ActiveRecallScreen
 import com.example.cramrescue.presentation.recall.ActiveRecallViewModelFactory
 import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
@@ -90,7 +92,12 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(navArgument(Screen.Cockpit.ARG_CAMPAIGN_ID) { type = NavType.LongType })
         ) { backStackEntry ->
             val campaignId = backStackEntry.arguments?.getLong(Screen.Cockpit.ARG_CAMPAIGN_ID) ?: 0L
-            val factory = CockpitViewModelFactory(application.campaignRepository, campaignId)
+            val factory = CockpitViewModelFactory(
+                application.campaignRepository,
+                campaignId,
+                application.getStudyPlanUseCase,
+                application.startMicroMissionUseCase
+            )
             CockpitScreen(
                 viewModelFactory = factory,
                 onBackToHome = {
@@ -107,6 +114,9 @@ fun NavGraph(navController: NavHostController) {
                 onOpenGeminiSettings = { navController.navigate(Screen.GeminiSettings.route) },
                 onOpenMicroCards = { id ->
                     navController.navigate(Screen.MicroCards.createRoute(id))
+                },
+                onStartMission = { id ->
+                    navController.navigate(Screen.ActiveRecall.createRoute(id, mission = true))
                 }
             )
         }
@@ -204,14 +214,49 @@ fun NavGraph(navController: NavHostController) {
 
         composable(
             route = Screen.ActiveRecall.route,
-            arguments = listOf(navArgument(Screen.ActiveRecall.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+            arguments = listOf(
+                navArgument(Screen.ActiveRecall.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.ActiveRecall.ARG_MISSION) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
+            )
         ) { backStackEntry ->
             val campaignId = backStackEntry.arguments?.getLong(Screen.ActiveRecall.ARG_CAMPAIGN_ID) ?: 0L
+            val missionMode = backStackEntry.arguments?.getBoolean(Screen.ActiveRecall.ARG_MISSION) ?: false
             ActiveRecallScreen(
                 viewModelFactory = ActiveRecallViewModelFactory(
                     campaignId,
+                    missionMode,
                     application.getMicroCardsUseCase,
+                    application.getMissionCardsUseCase,
                     application.recordRecallAssessmentUseCase
+                ),
+                onBack = { navController.popBackStack() },
+                onOpenSource = { cardId, documentId, pageIndex ->
+                    navController.navigate(Screen.SourceGrounding.createRoute(campaignId, cardId, documentId, pageIndex))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.SourceGrounding.route,
+            arguments = listOf(
+                navArgument(Screen.SourceGrounding.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.SourceGrounding.ARG_CARD_ID) { type = NavType.LongType },
+                navArgument(Screen.SourceGrounding.ARG_DOCUMENT_ID) { type = NavType.LongType },
+                navArgument(Screen.SourceGrounding.ARG_PAGE_INDEX) { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val args = backStackEntry.arguments
+            SourceGroundingScreen(
+                viewModelFactory = SourceGroundingViewModelFactory(
+                    campaignId = args?.getLong(Screen.SourceGrounding.ARG_CAMPAIGN_ID) ?: 0L,
+                    cardId = args?.getLong(Screen.SourceGrounding.ARG_CARD_ID) ?: 0L,
+                    documentId = args?.getLong(Screen.SourceGrounding.ARG_DOCUMENT_ID) ?: 0L,
+                    pageIndex = args?.getInt(Screen.SourceGrounding.ARG_PAGE_INDEX) ?: 0,
+                    getGroundedSource = application.getGroundedSourceUseCase,
+                    loader = application.sourcePageLoader
                 ),
                 onBack = { navController.popBackStack() }
             )
@@ -228,7 +273,10 @@ fun NavGraph(navController: NavHostController) {
             val cardId = backStackEntry.arguments?.getLong(Screen.MicroCardDetail.ARG_CARD_ID) ?: 0L
             MicroCardDetailScreen(
                 viewModelFactory = MicroCardDetailViewModelFactory(campaignId, cardId, application.getMicroCardsUseCase),
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenSource = { documentId, pageIndex ->
+                    navController.navigate(Screen.SourceGrounding.createRoute(campaignId, cardId, documentId, pageIndex))
+                }
             )
         }
 

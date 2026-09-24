@@ -37,9 +37,21 @@ sealed class Screen(val route: String) {
         fun createRoute(campaignId: Long, cardId: Long) = "micro_card_detail/$campaignId/$cardId"
     }
 
-    data object ActiveRecall : Screen("active_recall/{campaignId}") {
+    data object ActiveRecall : Screen("active_recall/{campaignId}?mission={mission}") {
         const val ARG_CAMPAIGN_ID = "campaignId"
-        fun createRoute(campaignId: Long) = "active_recall/$campaignId"
+        const val ARG_MISSION = "mission"
+        /** [mission]: study the campaign's current Micro-mission instead of all cards. */
+        fun createRoute(campaignId: Long, mission: Boolean = false) = "active_recall/$campaignId?mission=$mission"
+    }
+
+    // Identity only; the destination re-resolves and re-checks everything from Room.
+    data object SourceGrounding : Screen("source_grounding/{campaignId}/{cardId}/{documentId}/{pageIndex}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        const val ARG_CARD_ID = "cardId"
+        const val ARG_DOCUMENT_ID = "documentId"
+        const val ARG_PAGE_INDEX = "pageIndex"
+        fun createRoute(campaignId: Long, cardId: Long, documentId: Long, pageIndex: Int) =
+            "source_grounding/$campaignId/$cardId/$documentId/$pageIndex"
     }
 
     // No arguments: the key is never passed through navigation.

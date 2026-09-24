@@ -232,6 +232,44 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   COMPLETED); transitions only from explicit events, so recomposition or a double tap can't
   save twice or skip a card. Scheduling / spaced repetition is out of scope until specified.
 
+## Pass Probability / Micro-missions
+
+- Fully local and derived: no Gemini request, no key read, no network, no stored score.
+- "Xác suất an toàn" follows requirements.md FR-9 exactly: `0.70 × Red completion rate + 0.30 ×
+  Yellow completion rate`, integer 0..100. It is the PRD's deterministic readiness heuristic, not
+  a calibrated probability. Policy lives only in `PassProbabilityPolicy`:
+  completion = latest attempt "Đã thuộc"; an empty tier's weight is dropped; floor rounding; no
+  time factor. No cards → "unavailable", never 0%.
+- Only current cards count: latest attempt per current card id; attempts of replaced cards are
+  history only.
+- Micro-missions (FR-10): `MissionSelectionPolicy` picks ≤ 7 non-mastered Red, then Yellow cards
+  (within a tier: Chưa nhớ → never studied → Tạm ổn → card order). No padding, no Green, no
+  randomness. The chosen ids/order are frozen in `micro_missions` so a mission can be paused and
+  resumed; progress is derived from attempts newer than `baselineAttemptId`.
+- Missions run through the M9 Active Recall engine (`RecallSession.startInOrder`) — never a
+  second study implementation. No new or resumed mission once the exam time has passed.
+- The Cockpit reloads study state on screen entry, never per countdown tick.
+
+## Source Grounding
+
+- Read-only and local: no OCR, no AI, no network, no file writes. Resolution is by persisted
+  identity only — card (campaign-scoped) → ref `(documentId, pageIndex, blockOrderIndex)` →
+  `ocr_results` page (canonical `sourceWidthPx/sourceHeightPx`) → `ocr_text_blocks` box. Never
+  resolve or "repair" a source by matching OCR text; a broken reference stays unavailable.
+- The card must actually cite the requested page, and the document must belong to the campaign;
+  navigation ids are not trusted. If the page was re-OCR'd after the card was built, block
+  identity no longer holds → unavailable ("SOURCE_CHANGED").
+- Canonical space = the exact pixels ML Kit processed: the upright photo (EXIF applied —
+  `InputImage.fromFilePath` does this; verified by `SourceOrientationAuditTest`) or the rendered
+  PDF page. Viewer images must be decoded with `decodeUprightSampledBitmap`, never raw
+  `BitmapFactory`, and a bitmap whose aspect differs from the source dims is refused.
+- All mapping lives in the pure `SourceCoordinateMapper` (Fit + centered offsets, in pixels —
+  never treat OCR pixels as dp). Display rectangles are never persisted; they are recomputed
+  on every container size change. Boxes are drawn individually; the union is only for focus;
+  visual padding is never used to correct geometry.
+- PDFs reuse the M6 `PdfPageRenderer` and render only the requested page.
+- In Active Recall, sources become reachable only after Reveal.
+
 ## Secrets (BYOK Gemini Key)
 
 - The key is stored only through `GeminiCredentialRepository`: AES-GCM with a non-exportable

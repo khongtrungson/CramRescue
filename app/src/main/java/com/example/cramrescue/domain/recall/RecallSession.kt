@@ -46,14 +46,15 @@ data class RecallSession(
 
     companion object {
         /** Emergency priority: Code Red before Code Yellow, M8 card order within each. */
-        fun start(cards: List<MicroCard>): RecallSession {
-            val ordered = cards.sortedWith(compareBy({ it.triage.ordinal }, { it.orderIndex }))
-            return RecallSession(
-                cards = ordered,
-                index = 0,
-                phase = if (ordered.isEmpty()) Phase.COMPLETED else Phase.QUESTION,
-                results = emptyList()
-            )
-        }
+        fun start(cards: List<MicroCard>): RecallSession =
+            startInOrder(cards.sortedWith(compareBy({ it.triage.ordinal }, { it.orderIndex })))
+
+        /** Keeps the given order — used for a Micro-mission, whose order is frozen at its start. */
+        fun startInOrder(cards: List<MicroCard>): RecallSession = RecallSession(
+            cards = cards,
+            index = 0,
+            phase = if (cards.isEmpty()) Phase.COMPLETED else Phase.QUESTION,
+            results = emptyList()
+        )
     }
 }

@@ -60,3 +60,7 @@ val CodeGreen = Color(0xFF2E7D32)    // Safe / optional / completed / positive
 val OnCodeRed = Color(0xFFFFFFFF)
 val OnCodeYellow = Color(0xFF1A1A1A)
 val OnCodeGreen = Color(0xFFFFFFFF)
+
+// Source Grounding highlight (requirements.md UJ-2: a yellow bounding-box frame on the original
+// page). A verification signal, not triage — deliberately a separate token from CodeYellow.
+val GroundingHighlight = Color(0xFFFFB300)

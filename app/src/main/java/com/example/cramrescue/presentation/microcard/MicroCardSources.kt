@@ -11,6 +11,17 @@ data class SourceLineUi(
     val snippet: String?
 )
 
+/** One document page cited by a card: opens the Source Grounding viewer for exactly this page. */
+data class SourceGroupUi(
+    val documentId: Long,
+    val pageIndex: Int,
+    /** e.g. "1.pdf · Trang 2". */
+    val location: String,
+    val blockCount: Int,
+    /** OCR text of the cited blocks (context only; null = block no longer in current OCR). */
+    val snippets: List<String?>
+)
+
 /** Resolves card source refs against the current material; never shows a stale ref as valid. */
 internal class CardSourceResolver(source: AnalysisSource) {
     private val labels = source.pages.associate { it.documentId to it.documentLabel }
@@ -24,6 +35,19 @@ internal class CardSourceResolver(source: AnalysisSource) {
             snippet = textByRef[ref]
         )
     }
+
+    /** Refs grouped by document + page, in citation order. */
+    fun groups(refs: List<SourceRef>): List<SourceGroupUi> =
+        refs.groupBy { it.documentId to it.pageIndex }.map { (key, groupRefs) ->
+            val (documentId, pageIndex) = key
+            SourceGroupUi(
+                documentId = documentId,
+                pageIndex = pageIndex,
+                location = "${labels[documentId] ?: "Tài liệu #$documentId"} · Trang ${pageIndex + 1}",
+                blockCount = groupRefs.size,
+                snippets = groupRefs.map { textByRef[it] }
+            )
+        }
 
     /** Compact label for a list item, e.g. "notes.pdf · tr. 1, 2 (4 khối)". */
     fun summary(refs: List<SourceRef>): String {

@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -17,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -36,10 +39,15 @@ fun CockpitScreen(
     onAddMaterials: (Long) -> Unit,
     onOpenAnalysis: (Long) -> Unit,
     onOpenGeminiSettings: () -> Unit,
-    onOpenMicroCards: (Long) -> Unit
+    onOpenMicroCards: (Long) -> Unit,
+    onStartMission: (Long) -> Unit
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
+
+    // Study state is re-read on every (re)entry, e.g. returning from a mission — so Pass
+    // Probability updates without a restart, and never once per countdown tick.
+    LaunchedEffect(Unit) { viewModel.refreshStudyPlan() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -73,6 +81,7 @@ fun CockpitScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -149,7 +158,18 @@ fun CockpitScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(modifier = Modifier.height(48.dp))
+                        uiState.studyPlan?.let { plan ->
+                            Spacer(modifier = Modifier.height(24.dp))
+                            StudyPlanSection(
+                                plan = plan,
+                                isExamReached = uiState.countdown?.isExamReached == true,
+                                isStartingMission = uiState.isStartingMission,
+                                missionMessage = uiState.missionMessage,
+                                onStartMission = { viewModel.startMission { onStartMission(campaign.id) } }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
 
                         Button(onClick = { onAddMaterials(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Thêm tài liệu")

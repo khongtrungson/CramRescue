@@ -10,6 +10,7 @@ import com.example.cramrescue.domain.recall.RecallSession
 import com.example.cramrescue.domain.recall.answers
 import com.example.cramrescue.domain.recall.segments
 import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
+import com.example.cramrescue.domain.usecase.mission.GetMissionCardsUseCase
 import com.example.cramrescue.domain.usecase.recall.RecordAssessmentResult
 import com.example.cramrescue.domain.usecase.recall.RecordRecallAssessmentUseCase
 import com.example.cramrescue.presentation.microcard.CardSourceResolver
@@ -25,7 +26,10 @@ import kotlinx.coroutines.launch
  */
 class ActiveRecallViewModel(
     private val campaignId: Long,
+    /** Study the frozen Micro-mission (FR-10) instead of all cards; same engine either way. */
+    private val missionMode: Boolean,
     private val getMicroCards: GetMicroCardsUseCase,
+    private val getMissionCards: GetMissionCardsUseCase,
     private val recordAssessment: RecordRecallAssessmentUseCase
 ) : ViewModel() {
 
@@ -43,7 +47,7 @@ class ActiveRecallViewModel(
 
     /** "Ôn lại": a fresh session over the campaign's current cards; earlier attempts stay. */
     fun restart() {
-        if (_uiState.value !is ActiveRecallUiState.Completed) return
+        if (missionMode || _uiState.value !is ActiveRecallUiState.Completed) return
         load()
     }
 
@@ -85,11 +89,17 @@ class ActiveRecallViewModel(
             cardsStale = state.cardsStale
             resolver = CardSourceResolver(state.source)
             errorMessage = null
-            session = RecallSession.start(state.cards)
-            if (state.cards.isEmpty()) {
+            // Mission: the remaining cards in their frozen mission order. Otherwise all current cards.
+            val cards = if (missionMode) getMissionCards(campaignId) else state.cards
+            session = if (missionMode) RecallSession.startInOrder(cards) else RecallSession.start(cards)
+            if (cards.isEmpty()) {
                 session = null
                 _uiState.value = ActiveRecallUiState.NoCards(
-                    "Chưa có thẻ ghi nhớ để ôn tập. Hãy tạo thẻ từ phân tích AI trước."
+                    if (missionMode) {
+                        "Nhiệm vụ này không còn thẻ nào cần ôn."
+                    } else {
+                        "Chưa có thẻ ghi nhớ để ôn tập. Hãy tạo thẻ từ phân tích AI trước."
+                    }
                 )
                 return@launch
             }
@@ -100,7 +110,7 @@ class ActiveRecallViewModel(
     private fun publish() {
         val current = session ?: return
         if (current.phase == RecallSession.Phase.COMPLETED) {
-            _uiState.value = ActiveRecallUiState.Completed(current.total, current.summary())
+            _uiState.value = ActiveRecallUiState.Completed(current.total, current.summary(), isMission = missionMode)
             return
         }
         val card = current.currentCard ?: return
@@ -116,14 +126,12 @@ class ActiveRecallViewModel(
                 answers = (prompt as? RecallPrompt.Cloze)?.answers(card.bullets[prompt.bulletIndex]).orEmpty(),
                 bullets = card.bullets,
                 notes = card.notes,
-                sourceLabels = resolver?.lines(card.sourceRefs).orEmpty()
-                    .groupBy { it.location }
-                    .map { (location, lines) ->
-                        "$location (${lines.size} khối)" + if (lines.any { it.snippet == null }) " — đã thay đổi" else ""
-                    }
+                sourceGroups = resolver?.groups(card.sourceRefs).orEmpty()
             )
         }
         _uiState.value = ActiveRecallUiState.Studying(
+            cardId = card.id,
+            isMission = missionMode,
             position = current.position,
             total = current.total,
             cardsStale = cardsStale,
@@ -139,11 +147,13 @@ class ActiveRecallViewModel(
 
 class ActiveRecallViewModelFactory(
     private val campaignId: Long,
+    private val missionMode: Boolean,
     private val getMicroCards: GetMicroCardsUseCase,
+    private val getMissionCards: GetMissionCardsUseCase,
     private val recordAssessment: RecordRecallAssessmentUseCase
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ActiveRecallViewModel(campaignId, getMicroCards, recordAssessment) as T
+        return ActiveRecallViewModel(campaignId, missionMode, getMicroCards, getMissionCards, recordAssessment) as T
     }
 }

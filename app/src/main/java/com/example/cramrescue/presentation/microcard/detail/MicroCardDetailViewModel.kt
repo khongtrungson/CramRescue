@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cramrescue.domain.model.TriageLevel
 import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
 import com.example.cramrescue.presentation.microcard.CardSourceResolver
-import com.example.cramrescue.presentation.microcard.SourceLineUi
+import com.example.cramrescue.presentation.microcard.SourceGroupUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +20,7 @@ data class MicroCardDetailUiState(
     val title: String = "",
     val bullets: List<String> = emptyList(),
     val notes: String? = null,
-    val sources: List<SourceLineUi> = emptyList(),
+    val sources: List<SourceGroupUi> = emptyList(),
     val isStale: Boolean = false
 )
 
@@ -49,7 +49,7 @@ class MicroCardDetailViewModel(
                     title = card.title,
                     bullets = card.bullets,
                     notes = card.notes,
-                    sources = CardSourceResolver(state.source).lines(card.sourceRefs),
+                    sources = CardSourceResolver(state.source).groups(card.sourceRefs),
                     isStale = state.cardsStale
                 )
             }

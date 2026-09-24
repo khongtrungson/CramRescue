@@ -23,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -41,7 +43,8 @@ private const val HIDDEN_PLACEHOLDER = "  ? ? ?  "
 @Composable
 fun ActiveRecallScreen(
     viewModelFactory: ActiveRecallViewModelFactory,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenSource: (cardId: Long, documentId: Long, pageIndex: Int) -> Unit
 ) {
     val viewModel: ActiveRecallViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -52,7 +55,7 @@ fun ActiveRecallScreen(
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
-        TextButton(onClick = onBack) { Text("← Thẻ ghi nhớ") }
+        TextButton(onClick = onBack) { Text("← Quay lại") }
         Spacer(modifier = Modifier.height(16.dp))
 
         when (val state = uiState) {
@@ -61,7 +64,8 @@ fun ActiveRecallScreen(
             is ActiveRecallUiState.Studying -> Studying(
                 state = state,
                 onReveal = viewModel::reveal,
-                onAssess = viewModel::assess
+                onAssess = viewModel::assess,
+                onOpenSource = { documentId, pageIndex -> onOpenSource(state.cardId, documentId, pageIndex) }
             )
             is ActiveRecallUiState.Completed -> Completed(state, onRestart = viewModel::restart, onBack = onBack)
         }
@@ -72,10 +76,11 @@ fun ActiveRecallScreen(
 private fun Studying(
     state: ActiveRecallUiState.Studying,
     onReveal: () -> Unit,
-    onAssess: (RecallAssessment) -> Unit
+    onAssess: (RecallAssessment) -> Unit,
+    onOpenSource: (documentId: Long, pageIndex: Int) -> Unit
 ) {
     Text(
-        text = "Thẻ ${state.position} / ${state.total}",
+        text = (if (state.isMission) "Nhiệm vụ · " else "") + "Thẻ ${state.position} / ${state.total}",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -115,7 +120,7 @@ private fun Studying(
         return
     }
 
-    Answer(revealed)
+    Answer(revealed, onOpenSource)
 
     Spacer(modifier = Modifier.height(20.dp))
     Text(
@@ -135,8 +140,13 @@ private fun Studying(
             enabled = !state.isSaving,
             modifier = Modifier.weight(1f)
         ) { Text(RecallAssessment.PARTIAL.label()) }
+        // FR-9: marking a card mastered raises Pass Probability — light haptic feedback.
+        val haptics = LocalHapticFeedback.current
         Button(
-            onClick = { onAssess(RecallAssessment.MASTERED) },
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onAssess(RecallAssessment.MASTERED)
+            },
             enabled = !state.isSaving,
             modifier = Modifier.weight(1f)
         ) { Text(RecallAssessment.MASTERED.label()) }
@@ -182,7 +192,7 @@ private fun Question(question: QuestionUi, revealed: Boolean, onReveal: () -> Un
 }
 
 @Composable
-private fun Answer(revealed: RevealedUi) {
+private fun Answer(revealed: RevealedUi, onOpenSource: (documentId: Long, pageIndex: Int) -> Unit) {
     if (revealed.answers.isNotEmpty()) {
         Text(
             text = "Đáp án: " + revealed.answers.joinToString(", "),
@@ -200,16 +210,17 @@ private fun Answer(revealed: RevealedUi) {
         Spacer(modifier = Modifier.height(8.dp))
         Text("Ghi chú mở rộng: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    if (revealed.sourceLabels.isNotEmpty()) {
+    if (revealed.sourceGroups.isNotEmpty()) {
         Spacer(modifier = Modifier.height(8.dp))
         HorizontalDivider()
-        Spacer(modifier = Modifier.height(8.dp))
-        revealed.sourceLabels.forEach { label ->
-            Text(
-                text = "Nguồn: $label",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        // Reachable only after Reveal: the source text/highlight would give the answer away.
+        revealed.sourceGroups.forEach { group ->
+            TextButton(onClick = { onOpenSource(group.documentId, group.pageIndex) }) {
+                Text(
+                    text = "Đối chiếu nguồn: ${group.location} (${group.blockCount} khối)",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
@@ -231,7 +242,12 @@ private fun Completed(state: ActiveRecallUiState.Completed, onRestart: () -> Uni
         Spacer(modifier = Modifier.height(4.dp))
     }
     Spacer(modifier = Modifier.height(24.dp))
-    Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Ôn lại") }
-    Spacer(modifier = Modifier.height(8.dp))
-    OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Về danh sách thẻ") }
+    if (state.isMission) {
+        // The next mission is chosen from the updated results back on the Cockpit — never auto-started.
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Về Buồng lái") }
+    } else {
+        Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Ôn lại") }
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Về danh sách thẻ") }
+    }
 }
