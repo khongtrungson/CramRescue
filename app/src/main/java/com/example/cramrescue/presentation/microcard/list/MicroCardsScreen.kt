@@ -27,13 +27,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cramrescue.presentation.analysis.TriageBadge
+import com.example.cramrescue.presentation.recall.label
 
 @Composable
 fun MicroCardsScreen(
     viewModelFactory: MicroCardsViewModelFactory,
     onBack: () -> Unit,
     onOpenAnalysis: () -> Unit,
-    onOpenCard: (Long) -> Unit
+    onOpenCard: (Long) -> Unit,
+    onStartStudy: () -> Unit
 ) {
     val viewModel: MicroCardsViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -121,6 +123,13 @@ fun MicroCardsScreen(
         }
 
         if (uiState.hasCards) {
+            Spacer(modifier = Modifier.height(16.dp))
+            val cardCount = uiState.redCards.size + uiState.yellowCards.size
+            Button(onClick = onStartStudy, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    if (uiState.cardsStale) "Ôn tập $cardCount thẻ (từ phân tích cũ)" else "Bắt đầu ôn tập ($cardCount thẻ)"
+                )
+            }
             CardSection("CODE RED — buộc phải thuộc", uiState.redCards, onOpenCard)
             CardSection("CODE YELLOW — kéo điểm an toàn", uiState.yellowCards, onOpenCard)
             Spacer(modifier = Modifier.height(16.dp))
@@ -190,6 +199,14 @@ private fun MicroCardItem(card: MicroCardItemUi, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+            card.latestAssessment?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Lần ôn gần nhất: ${it.label()}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))

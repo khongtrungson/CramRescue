@@ -12,6 +12,7 @@ import com.example.cramrescue.data.repository.CampaignRepositoryImpl
 import com.example.cramrescue.data.repository.OcrRepositoryImpl
 import com.example.cramrescue.data.repository.SourceDocumentRepositoryImpl
 import com.example.cramrescue.data.repository.StudyAnalysisRepositoryImpl
+import com.example.cramrescue.data.repository.StudyAttemptRepositoryImpl
 import com.example.cramrescue.domain.analysis.StudyAnalysisClient
 import com.example.cramrescue.domain.ocr.TextRecognitionEngine
 import com.example.cramrescue.domain.pdf.PdfPageRenderer
@@ -21,6 +22,7 @@ import com.example.cramrescue.domain.repository.MicroCardRepository
 import com.example.cramrescue.domain.repository.OcrRepository
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
 import com.example.cramrescue.domain.repository.StudyAnalysisRepository
+import com.example.cramrescue.domain.repository.StudyAttemptRepository
 import com.example.cramrescue.domain.usecase.analysis.GenerateCampaignAnalysisUseCase
 import com.example.cramrescue.domain.usecase.analysis.GetAnalysisSourceUseCase
 import com.example.cramrescue.domain.usecase.analysis.GetCampaignAnalysisUseCase
@@ -28,6 +30,7 @@ import com.example.cramrescue.domain.usecase.material.DeleteSourceDocumentUseCas
 import com.example.cramrescue.domain.usecase.microcard.CreateMicroCardsUseCase
 import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
 import com.example.cramrescue.domain.usecase.ocr.ProcessDocumentOcrUseCase
+import com.example.cramrescue.domain.usecase.recall.RecordRecallAssessmentUseCase
 import com.example.cramrescue.domain.usecase.settings.CheckStoredGeminiCredentialUseCase
 import com.example.cramrescue.domain.usecase.settings.SaveGeminiCredentialUseCase
 
@@ -112,5 +115,14 @@ class CramRescueApplication : Application() {
 
     val createMicroCardsUseCase: CreateMicroCardsUseCase by lazy {
         CreateMicroCardsUseCase(getCampaignAnalysisUseCase, microCardRepository)
+    }
+
+    // Milestone 9: Active Recall. Fully local — no dependency on the Gemini client or the key.
+    val studyAttemptRepository: StudyAttemptRepository by lazy {
+        StudyAttemptRepositoryImpl(database.studyAttemptDao())
+    }
+
+    val recordRecallAssessmentUseCase: RecordRecallAssessmentUseCase by lazy {
+        RecordRecallAssessmentUseCase(studyAttemptRepository)
     }
 }

@@ -11,6 +11,7 @@ import com.example.cramrescue.data.local.dao.MicroCardDao
 import com.example.cramrescue.data.local.dao.OcrDao
 import com.example.cramrescue.data.local.dao.SourceDocumentDao
 import com.example.cramrescue.data.local.dao.StudyAnalysisDao
+import com.example.cramrescue.data.local.dao.StudyAttemptDao
 import com.example.cramrescue.data.local.entity.AnalysisPriorityEntity
 import com.example.cramrescue.data.local.entity.AnalysisSourceRefEntity
 import com.example.cramrescue.data.local.entity.CampaignAnalysisEntity
@@ -20,6 +21,7 @@ import com.example.cramrescue.data.local.entity.MicroCardSourceRefEntity
 import com.example.cramrescue.data.local.entity.OcrResultEntity
 import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 import com.example.cramrescue.data.local.entity.SourceDocumentEntity
+import com.example.cramrescue.data.local.entity.StudyAttemptEntity
 
 @Database(
     entities = [
@@ -31,9 +33,10 @@ import com.example.cramrescue.data.local.entity.SourceDocumentEntity
         AnalysisPriorityEntity::class,
         AnalysisSourceRefEntity::class,
         MicroCardEntity::class,
-        MicroCardSourceRefEntity::class
+        MicroCardSourceRefEntity::class,
+        StudyAttemptEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ocrDao(): OcrDao
     abstract fun studyAnalysisDao(): StudyAnalysisDao
     abstract fun microCardDao(): MicroCardDao
+    abstract fun studyAttemptDao(): StudyAttemptDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -254,6 +258,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone 9: Active Recall history. Adds study_attempts only; no existing table is
+        // altered, so all M2–M8 data (including MicroCards) is untouched.
+        val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `study_attempts` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `campaignId` INTEGER NOT NULL,
+                        `microCardId` INTEGER,
+                        `triage` TEXT NOT NULL,
+                        `cardTitle` TEXT NOT NULL,
+                        `assessment` TEXT NOT NULL,
+                        `attemptedAtEpochMillis` INTEGER NOT NULL,
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`microCardId`) REFERENCES `micro_cards`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_study_attempts_campaignId` ON `study_attempts` (`campaignId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_study_attempts_microCardId` ON `study_attempts` (`microCardId`)")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -264,7 +292,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build().also { instance = it }
             }
     }

@@ -213,6 +213,25 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - Don't add study state (mastery, scheduling, cloze keywords) to MicroCard before the Active
   Recall milestone needs it.
 
+## Active Recall / Study State
+
+- Active Recall is fully local: no Gemini request, no key read, no network. M9 classes must not
+  depend on `StudyAnalysisClient` or `GeminiCredentialRepository`.
+- Cloze (FR-11) is chosen by `RecallPromptBuilder`: deterministic rules (formula / `O(...)`,
+  technical identifier, number, short definition tail), never randomness, never AI. When no
+  safe target exists it falls back to `RecallPrompt.General`. Prompts are recomputed from the
+  immutable card content and never stored; card text is never modified.
+- Before reveal, show only the prompt — never notes, sources or other bullets.
+- Study state is append-only `study_attempts` (FR-12 levels `NOT_REMEMBERED` / `PARTIAL` /
+  `MASTERED`, labelled "Chưa nhớ" / "Tạm ổn" / "Đã thuộc"). A card's mastery is its latest
+  attempt; don't add mutable progress fields to MicroCard.
+- `study_attempts.microCardId` is `SET NULL` on card deletion: rebuilding cards keeps history
+  (with a triage/title snapshot) and new cards never inherit old results. Campaign deletion
+  cascades.
+- The study flow is the `RecallSession` state machine (QUESTION → REVEALED → SAVING → next /
+  COMPLETED); transitions only from explicit events, so recomposition or a double tap can't
+  save twice or skip a card. Scheduling / spaced repetition is out of scope until specified.
+
 ## Secrets (BYOK Gemini Key)
 
 - The key is stored only through `GeminiCredentialRepository`: AES-GCM with a non-exportable

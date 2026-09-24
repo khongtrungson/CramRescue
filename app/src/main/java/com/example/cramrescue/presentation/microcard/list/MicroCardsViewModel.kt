@@ -3,8 +3,10 @@ package com.example.cramrescue.presentation.microcard.list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.cramrescue.domain.model.RecallAssessment
 import com.example.cramrescue.domain.model.TriageLevel
 import com.example.cramrescue.domain.repository.CampaignRepository
+import com.example.cramrescue.domain.repository.StudyAttemptRepository
 import com.example.cramrescue.domain.usecase.microcard.CreateMicroCardsResult
 import com.example.cramrescue.domain.usecase.microcard.CreateMicroCardsUseCase
 import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
@@ -20,7 +22,8 @@ class MicroCardsViewModel(
     private val campaignId: Long,
     private val campaignRepository: CampaignRepository,
     private val getMicroCards: GetMicroCardsUseCase,
-    private val createMicroCards: CreateMicroCardsUseCase
+    private val createMicroCards: CreateMicroCardsUseCase,
+    private val studyAttemptRepository: StudyAttemptRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MicroCardsUiState())
@@ -31,7 +34,8 @@ class MicroCardsViewModel(
         viewModelScope.launch {
             val campaign = campaignRepository.getCampaignById(campaignId)
             val state = getMicroCards(campaignId)
-            _uiState.update { it.withState(campaign?.name.orEmpty(), state) }
+            val latest = latestAssessments()
+            _uiState.update { it.withState(campaign?.name.orEmpty(), state, latest) }
         }
     }
 
@@ -52,14 +56,25 @@ class MicroCardsViewModel(
             }
             val campaign = campaignRepository.getCampaignById(campaignId)
             val state = getMicroCards(campaignId)
+            val latest = latestAssessments()
             _uiState.update {
-                it.withState(campaign?.name.orEmpty(), state)
+                it.withState(campaign?.name.orEmpty(), state, latest)
                     .copy(isCreating = false, message = message, messageIsError = isError)
             }
         }
     }
 
-    private fun MicroCardsUiState.withState(campaignName: String, state: MicroCardsState): MicroCardsUiState {
+    /** Latest attempt per card id (attempts come oldest first). Rebuilt cards have new ids, so no inheritance. */
+    private suspend fun latestAssessments(): Map<Long, RecallAssessment> =
+        studyAttemptRepository.getAttemptsForCampaign(campaignId)
+            .filter { it.microCardId != null }
+            .associate { it.microCardId!! to it.assessment }
+
+    private fun MicroCardsUiState.withState(
+        campaignName: String,
+        state: MicroCardsState,
+        latest: Map<Long, RecallAssessment>
+    ): MicroCardsUiState {
         val resolver = CardSourceResolver(state.source)
         val items = state.cards.map { card ->
             MicroCardItemUi(
@@ -68,7 +83,8 @@ class MicroCardsViewModel(
                 title = card.title,
                 bullets = card.bullets,
                 sourceLabel = resolver.summary(card.sourceRefs),
-                sourcesAvailable = card.sourceRefs.isNotEmpty() && card.sourceRefs.all(resolver::resolved)
+                sourcesAvailable = card.sourceRefs.isNotEmpty() && card.sourceRefs.all(resolver::resolved),
+                latestAssessment = latest[card.id]
             )
         }
         val blocker = when {
@@ -96,10 +112,11 @@ class MicroCardsViewModelFactory(
     private val campaignId: Long,
     private val campaignRepository: CampaignRepository,
     private val getMicroCards: GetMicroCardsUseCase,
-    private val createMicroCards: CreateMicroCardsUseCase
+    private val createMicroCards: CreateMicroCardsUseCase,
+    private val studyAttemptRepository: StudyAttemptRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return MicroCardsViewModel(campaignId, campaignRepository, getMicroCards, createMicroCards) as T
+        return MicroCardsViewModel(campaignId, campaignRepository, getMicroCards, createMicroCards, studyAttemptRepository) as T
     }
 }

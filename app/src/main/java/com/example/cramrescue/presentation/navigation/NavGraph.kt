@@ -27,6 +27,8 @@ import com.example.cramrescue.presentation.microcard.detail.MicroCardDetailScree
 import com.example.cramrescue.presentation.microcard.detail.MicroCardDetailViewModelFactory
 import com.example.cramrescue.presentation.microcard.list.MicroCardsScreen
 import com.example.cramrescue.presentation.microcard.list.MicroCardsViewModelFactory
+import com.example.cramrescue.presentation.recall.ActiveRecallScreen
+import com.example.cramrescue.presentation.recall.ActiveRecallViewModelFactory
 import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 
@@ -186,7 +188,8 @@ fun NavGraph(navController: NavHostController) {
                 campaignId,
                 application.campaignRepository,
                 application.getMicroCardsUseCase,
-                application.createMicroCardsUseCase
+                application.createMicroCardsUseCase,
+                application.studyAttemptRepository
             )
             MicroCardsScreen(
                 viewModelFactory = factory,
@@ -194,7 +197,23 @@ fun NavGraph(navController: NavHostController) {
                 onOpenAnalysis = { navController.navigate(Screen.CampaignAnalysis.createRoute(campaignId)) },
                 onOpenCard = { cardId ->
                     navController.navigate(Screen.MicroCardDetail.createRoute(campaignId, cardId))
-                }
+                },
+                onStartStudy = { navController.navigate(Screen.ActiveRecall.createRoute(campaignId)) }
+            )
+        }
+
+        composable(
+            route = Screen.ActiveRecall.route,
+            arguments = listOf(navArgument(Screen.ActiveRecall.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.ActiveRecall.ARG_CAMPAIGN_ID) ?: 0L
+            ActiveRecallScreen(
+                viewModelFactory = ActiveRecallViewModelFactory(
+                    campaignId,
+                    application.getMicroCardsUseCase,
+                    application.recordRecallAssessmentUseCase
+                ),
+                onBack = { navController.popBackStack() }
             )
         }
 

@@ -1,5 +1,6 @@
 package com.example.cramrescue.presentation.microcard.list
 
+import com.example.cramrescue.domain.model.RecallAssessment
 import com.example.cramrescue.domain.model.TriageLevel
 
 /** Why there is nothing to study yet, in the order the user has to fix it. */
@@ -12,7 +13,9 @@ data class MicroCardItemUi(
     val bullets: List<String>,
     val sourceLabel: String,
     /** Every source ref still resolves to a current OCR block. */
-    val sourcesAvailable: Boolean
+    val sourcesAvailable: Boolean,
+    /** FR-12 mastery: the latest self-assessment of this exact card, if studied. */
+    val latestAssessment: RecallAssessment? = null
 )
 
 data class MicroCardsUiState(
