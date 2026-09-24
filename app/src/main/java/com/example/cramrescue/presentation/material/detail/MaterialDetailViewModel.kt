@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.cramrescue.domain.model.OcrResult
 import com.example.cramrescue.domain.repository.OcrRepository
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
+import com.example.cramrescue.domain.usecase.material.DeleteDocumentResult
+import com.example.cramrescue.domain.usecase.material.DeleteSourceDocumentUseCase
 import com.example.cramrescue.domain.usecase.ocr.ProcessDocumentOcrResult
 import com.example.cramrescue.domain.usecase.ocr.ProcessDocumentOcrUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,8 @@ class MaterialDetailViewModel(
     private val sourceDocumentRepository: SourceDocumentRepository,
     private val ocrRepository: OcrRepository,
     private val processDocumentOcrUseCase: ProcessDocumentOcrUseCase,
+    private val deleteSourceDocument: DeleteSourceDocumentUseCase,
+    private val campaignId: Long,
     private val documentId: Long
 ) : ViewModel() {
 
@@ -47,7 +51,8 @@ class MaterialDetailViewModel(
     }
 
     fun extractText() {
-        if (_uiState.value.isProcessingOcr) return // guard against duplicate concurrent processing
+        // Guard against duplicate concurrent processing, and against OCR racing a deletion.
+        if (_uiState.value.isProcessingOcr || _uiState.value.isDeleting) return
 
         viewModelScope.launch {
             _uiState.update {
@@ -78,6 +83,30 @@ class MaterialDetailViewModel(
         }
     }
 
+    /** Only called after the user confirmed the deletion dialog. */
+    fun delete() {
+        if (!_uiState.value.canDelete) return
+        _uiState.update { it.copy(isDeleting = true, errorMessage = null) }
+        viewModelScope.launch {
+            val result = deleteSourceDocument(campaignId, documentId)
+            _uiState.update {
+                when (result) {
+                    // NotFound: already gone (e.g. deleted concurrently) — same end state for the user.
+                    DeleteDocumentResult.Deleted, DeleteDocumentResult.NotFound ->
+                        it.copy(isDeleting = false, isDeleted = true)
+                    DeleteDocumentResult.NotInCampaign -> it.copy(
+                        isDeleting = false,
+                        errorMessage = "Tài liệu này không thuộc chiến dịch hiện tại nên không thể xóa."
+                    )
+                    DeleteDocumentResult.Failed -> it.copy(
+                        isDeleting = false,
+                        errorMessage = "Không thể xóa tài liệu. Vui lòng thử lại."
+                    )
+                }
+            }
+        }
+    }
+
     private fun applyResult(result: OcrResult) {
         val pages = result.pages.sortedBy { it.pageIndex }.map { page ->
             OcrPageUi(
@@ -96,10 +125,19 @@ class MaterialDetailViewModelFactory(
     private val sourceDocumentRepository: SourceDocumentRepository,
     private val ocrRepository: OcrRepository,
     private val processDocumentOcrUseCase: ProcessDocumentOcrUseCase,
+    private val deleteSourceDocument: DeleteSourceDocumentUseCase,
+    private val campaignId: Long,
     private val documentId: Long
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return MaterialDetailViewModel(sourceDocumentRepository, ocrRepository, processDocumentOcrUseCase, documentId) as T
+        return MaterialDetailViewModel(
+            sourceDocumentRepository,
+            ocrRepository,
+            processDocumentOcrUseCase,
+            deleteSourceDocument,
+            campaignId,
+            documentId
+        ) as T
     }
 }

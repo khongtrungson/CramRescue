@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -52,6 +53,9 @@ fun AddMaterialScreen(
     val viewModel: AddMaterialViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Reload from Room on every (re)entry, e.g. after a material was deleted in its detail screen.
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_GALLERY_SELECTION)

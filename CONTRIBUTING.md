@@ -45,7 +45,7 @@ Group by feature, not by layer-of-one. A feature with multiple screens (e.g. cam
 confirmation) gets its own subpackage per screen under `presentation/<feature>/`.
 
 Only create a package when it holds a real file. Don't pre-create empty packages for features that
-haven't started (e.g. no `ocr/`, `gemini/`, `microcard/` until those milestones begin).
+haven't started (e.g. no `microcard/` until that milestone begins).
 
 ## Naming Conventions
 
@@ -169,6 +169,41 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   `OcrResult` in `domain/model/`).
 - Persist enough source-dimension/page information to interpret those coordinates later.
 - Do not discard bounding boxes because Source Grounding depends on them.
+
+## AI Analysis (Gemini) Boundary
+
+- Gemini networking lives only in `data/remote/` (`GeminiStudyAnalysisClient`, `GeminiJson`). The
+  domain talks to it through `StudyAnalysisClient`; no HTTP, JSON or Gemini types leave `data/`.
+- The model id, base URL and timeouts live only in `GeminiConfig`. Don't name a model anywhere else.
+- Only the official endpoint (`generativelanguage.googleapis.com`) over HTTPS with default
+  certificate validation. No other network endpoint, no analytics, no telemetry, no own backend.
+- Gemini receives **OCR text only** — never images, PDFs, rendered pages or bounding boxes.
+- AI input is built by `AnalysisSource.assemble(campaignId, …)` in document → page → block order.
+  Each block gets a request-local ref (`B1…Bn`) mapping to `(documentId, pageIndex, orderIndex)` —
+  the stable block identity (OCR row ids change on reprocessing).
+- OCR text is untrusted data: it only appears between the material delimiters, and the system
+  instruction says it must not be followed as instructions.
+- Model output is untrusted too: structured JSON → typed `AnalysisDraft` →
+  `StudyAnalysisValidator` → domain → Room. Any invalid field or unknown source ref rejects the whole
+  response. Never parse free text or Markdown from the model.
+- Product limits (3-Bullet Budget, Code Green discarding) are enforced on the client after
+  validation, not left to the prompt.
+- An analysis belongs to exactly one Campaign (`campaign_analyses.campaignId` is the primary key).
+  Regeneration replaces it in one transaction, and only after validation succeeds, so a failed
+  regeneration never touches the existing analysis. Staleness is detected by comparing
+  `sourceFingerprint` with the campaign's current material.
+- Tests use a fake `StudyAnalysisClient`; no test may need a real key.
+
+## Secrets (BYOK Gemini Key)
+
+- The key is stored only through `GeminiCredentialRepository`: AES-GCM with a non-exportable
+  Android Keystore key, ciphertext in the `gemini_credential` prefs file, which is excluded from
+  backup/device transfer. `EncryptedSharedPreferences` is deprecated — don't reintroduce it.
+- Never put the key in Room, logs, exception messages, UI state, saved state, navigation
+  arguments, URLs (it goes in the `x-goog-api-key` header only), or committed test fixtures.
+- Read the key immediately before a call and don't hold it; ViewModels never hold it.
+- When testing on a device, type a real key on the device keyboard. `adb shell input text`
+  is recorded in the system `adbd` log.
 
 ## Dependency Management
 

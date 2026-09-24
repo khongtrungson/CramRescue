@@ -70,6 +70,21 @@ class MaterialFileStore(private val context: Context) {
         Unit
     }
 
+    /**
+     * Deletes a material file, but only if it lives inside this store's own materials directory.
+     * Ownership is decided by the canonical path, never inferred from a URI, so a user's original
+     * gallery image or PDF can't be deleted through this. Best-effort: an already-missing file
+     * counts as deleted, and a failure is reported via the return value rather than thrown.
+     */
+    suspend fun deleteOwnedFile(localPath: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val file = File(localPath).canonicalFile
+            val ownedDir = materialsDir.canonicalFile
+            if (file.parentFile != ownedDir) return@runCatching false
+            !file.exists() || file.delete()
+        }.getOrDefault(false)
+    }
+
     /** A fresh, empty file for the camera app to write a full-resolution capture into. */
     fun createCameraOutputFile(): File = File(materialsDir, "${UUID.randomUUID()}.jpg")
 

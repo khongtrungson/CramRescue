@@ -58,6 +58,8 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
+    // Android's org.json is stubbed in local unit tests; the real implementation for GeminiJson tests.
+    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

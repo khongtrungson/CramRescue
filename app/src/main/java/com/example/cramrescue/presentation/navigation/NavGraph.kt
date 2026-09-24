@@ -9,6 +9,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.cramrescue.CramRescueApplication
 import com.example.cramrescue.domain.usecase.campaign.CreateCampaignUseCase
+import com.example.cramrescue.presentation.analysis.CampaignAnalysisScreen
+import com.example.cramrescue.presentation.analysis.CampaignAnalysisViewModelFactory
 import com.example.cramrescue.presentation.campaign.confirmation.CampaignConfirmationScreen
 import com.example.cramrescue.presentation.campaign.confirmation.CampaignConfirmationViewModelFactory
 import com.example.cramrescue.presentation.campaign.create.CreateCampaignScreen
@@ -21,6 +23,8 @@ import com.example.cramrescue.presentation.material.add.AddMaterialScreen
 import com.example.cramrescue.presentation.material.add.AddMaterialViewModelFactory
 import com.example.cramrescue.presentation.material.detail.MaterialDetailScreen
 import com.example.cramrescue.presentation.material.detail.MaterialDetailViewModelFactory
+import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
+import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -90,7 +94,11 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onAddMaterials = { id ->
                     navController.navigate(Screen.AddMaterial.createRoute(id))
-                }
+                },
+                onOpenAnalysis = { id ->
+                    navController.navigate(Screen.CampaignAnalysis.createRoute(id))
+                },
+                onOpenGeminiSettings = { navController.navigate(Screen.GeminiSettings.route) }
             )
         }
 
@@ -108,7 +116,7 @@ fun NavGraph(navController: NavHostController) {
             AddMaterialScreen(
                 viewModelFactory = factory,
                 onOpenMaterial = { documentId ->
-                    navController.navigate(Screen.MaterialDetail.createRoute(documentId))
+                    navController.navigate(Screen.MaterialDetail.createRoute(campaignId, documentId))
                 },
                 onBackToCockpit = {
                     navController.navigate(Screen.Cockpit.createRoute(campaignId)) {
@@ -120,16 +128,54 @@ fun NavGraph(navController: NavHostController) {
 
         composable(
             route = Screen.MaterialDetail.route,
-            arguments = listOf(navArgument(Screen.MaterialDetail.ARG_DOCUMENT_ID) { type = NavType.LongType })
+            arguments = listOf(
+                navArgument(Screen.MaterialDetail.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.MaterialDetail.ARG_DOCUMENT_ID) { type = NavType.LongType }
+            )
         ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.MaterialDetail.ARG_CAMPAIGN_ID) ?: 0L
             val documentId = backStackEntry.arguments?.getLong(Screen.MaterialDetail.ARG_DOCUMENT_ID) ?: 0L
             val factory = MaterialDetailViewModelFactory(
                 application.sourceDocumentRepository,
                 application.ocrRepository,
                 application.processDocumentOcrUseCase,
+                application.deleteSourceDocumentUseCase,
+                campaignId,
                 documentId
             )
             MaterialDetailScreen(
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.CampaignAnalysis.route,
+            arguments = listOf(navArgument(Screen.CampaignAnalysis.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.CampaignAnalysis.ARG_CAMPAIGN_ID) ?: 0L
+            val factory = CampaignAnalysisViewModelFactory(
+                campaignId,
+                application.campaignRepository,
+                application.geminiCredentialRepository,
+                application.getCampaignAnalysisUseCase,
+                application.generateCampaignAnalysisUseCase
+            )
+            CampaignAnalysisScreen(
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onOpenSettings = { navController.navigate(Screen.GeminiSettings.route) }
+            )
+        }
+
+        composable(Screen.GeminiSettings.route) {
+            val factory = GeminiSettingsViewModelFactory(
+                application.geminiCredentialRepository,
+                application.saveGeminiCredentialUseCase,
+                application.checkStoredGeminiCredentialUseCase
+            )
+            GeminiSettingsScreen(
                 viewModelFactory = factory,
                 onBack = { navController.popBackStack() }
             )

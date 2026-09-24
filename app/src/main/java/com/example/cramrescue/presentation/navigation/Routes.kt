@@ -15,8 +15,18 @@ sealed class Screen(val route: String) {
         const val ARG_CAMPAIGN_ID = "campaignId"
         fun createRoute(campaignId: Long) = "add_material/$campaignId"
     }
-    data object MaterialDetail : Screen("material_detail/{documentId}") {
+    // campaignId is explicit so actions on the material (e.g. deletion) are scoped to the campaign
+    // the user navigated from, never inferred from the document itself.
+    data object MaterialDetail : Screen("material_detail/{campaignId}/{documentId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
         const val ARG_DOCUMENT_ID = "documentId"
-        fun createRoute(documentId: Long) = "material_detail/$documentId"
+        fun createRoute(campaignId: Long, documentId: Long) = "material_detail/$campaignId/$documentId"
     }
+    data object CampaignAnalysis : Screen("campaign_analysis/{campaignId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        fun createRoute(campaignId: Long) = "campaign_analysis/$campaignId"
+    }
+
+    // No arguments: the key is never passed through navigation.
+    data object GeminiSettings : Screen("gemini_settings")
 }

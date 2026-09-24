@@ -27,6 +27,9 @@ private class FakeSourceDocumentRepository : SourceDocumentRepository {
     private val documents = mutableMapOf<Long, SourceDocument>()
     private var nextId = 1L
 
+    override suspend fun deleteDocument(campaignId: Long, documentId: Long): Boolean =
+        documents[documentId]?.takeIf { it.campaignId == campaignId }?.let { documents.remove(documentId) } != null
+
     override suspend fun saveDocument(document: SourceDocument): Long {
         val id = nextId++
         documents[id] = document.copy(id = id)

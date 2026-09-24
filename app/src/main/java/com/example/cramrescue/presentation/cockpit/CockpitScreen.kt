@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,7 +33,9 @@ import java.time.format.DateTimeFormatter
 fun CockpitScreen(
     viewModelFactory: CockpitViewModelFactory,
     onBackToHome: () -> Unit,
-    onAddMaterials: (Long) -> Unit
+    onAddMaterials: (Long) -> Unit,
+    onOpenAnalysis: (Long) -> Unit,
+    onOpenGeminiSettings: () -> Unit
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -149,6 +152,18 @@ fun CockpitScreen(
 
                         Button(onClick = { onAddMaterials(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Thêm tài liệu")
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedButton(onClick = { onOpenAnalysis(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Phân tích AI (Pareto 80/20)")
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        TextButton(onClick = onOpenGeminiSettings, modifier = Modifier.fillMaxWidth()) {
+                            Text("Cài đặt Gemini API key")
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))

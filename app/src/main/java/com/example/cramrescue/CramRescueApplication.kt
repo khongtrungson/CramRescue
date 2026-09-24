@@ -5,15 +5,27 @@ import com.example.cramrescue.data.local.MaterialFileStore
 import com.example.cramrescue.data.local.database.AppDatabase
 import com.example.cramrescue.data.ocr.MlKitTextRecognitionEngine
 import com.example.cramrescue.data.pdf.AndroidPdfPageRenderer
+import com.example.cramrescue.data.remote.GeminiStudyAnalysisClient
+import com.example.cramrescue.data.repository.GeminiCredentialRepositoryImpl
 import com.example.cramrescue.data.repository.CampaignRepositoryImpl
 import com.example.cramrescue.data.repository.OcrRepositoryImpl
 import com.example.cramrescue.data.repository.SourceDocumentRepositoryImpl
+import com.example.cramrescue.data.repository.StudyAnalysisRepositoryImpl
+import com.example.cramrescue.domain.analysis.StudyAnalysisClient
 import com.example.cramrescue.domain.ocr.TextRecognitionEngine
 import com.example.cramrescue.domain.pdf.PdfPageRenderer
 import com.example.cramrescue.domain.repository.CampaignRepository
+import com.example.cramrescue.domain.repository.GeminiCredentialRepository
 import com.example.cramrescue.domain.repository.OcrRepository
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
+import com.example.cramrescue.domain.repository.StudyAnalysisRepository
+import com.example.cramrescue.domain.usecase.analysis.GenerateCampaignAnalysisUseCase
+import com.example.cramrescue.domain.usecase.analysis.GetAnalysisSourceUseCase
+import com.example.cramrescue.domain.usecase.analysis.GetCampaignAnalysisUseCase
+import com.example.cramrescue.domain.usecase.material.DeleteSourceDocumentUseCase
 import com.example.cramrescue.domain.usecase.ocr.ProcessDocumentOcrUseCase
+import com.example.cramrescue.domain.usecase.settings.CheckStoredGeminiCredentialUseCase
+import com.example.cramrescue.domain.usecase.settings.SaveGeminiCredentialUseCase
 
 class CramRescueApplication : Application() {
 
@@ -24,7 +36,7 @@ class CramRescueApplication : Application() {
     }
 
     val sourceDocumentRepository: SourceDocumentRepository by lazy {
-        SourceDocumentRepositoryImpl(database.sourceDocumentDao())
+        SourceDocumentRepositoryImpl(database.sourceDocumentDao(), materialFileStore)
     }
 
     val ocrRepository: OcrRepository by lazy {
@@ -44,5 +56,44 @@ class CramRescueApplication : Application() {
             textRecognitionEngine,
             pdfPageRenderer
         )
+    }
+
+    val deleteSourceDocumentUseCase: DeleteSourceDocumentUseCase by lazy {
+        DeleteSourceDocumentUseCase(sourceDocumentRepository)
+    }
+
+    // Milestone 7: BYOK + Gemini study analysis.
+    val studyAnalysisRepository: StudyAnalysisRepository by lazy {
+        StudyAnalysisRepositoryImpl(database.studyAnalysisDao())
+    }
+
+    val geminiCredentialRepository: GeminiCredentialRepository by lazy { GeminiCredentialRepositoryImpl(this) }
+
+    val studyAnalysisClient: StudyAnalysisClient by lazy { GeminiStudyAnalysisClient() }
+
+    private val getAnalysisSourceUseCase: GetAnalysisSourceUseCase by lazy {
+        GetAnalysisSourceUseCase(sourceDocumentRepository, ocrRepository)
+    }
+
+    val generateCampaignAnalysisUseCase: GenerateCampaignAnalysisUseCase by lazy {
+        GenerateCampaignAnalysisUseCase(
+            campaignRepository,
+            getAnalysisSourceUseCase,
+            geminiCredentialRepository,
+            studyAnalysisClient,
+            studyAnalysisRepository
+        )
+    }
+
+    val getCampaignAnalysisUseCase: GetCampaignAnalysisUseCase by lazy {
+        GetCampaignAnalysisUseCase(studyAnalysisRepository, getAnalysisSourceUseCase)
+    }
+
+    val saveGeminiCredentialUseCase: SaveGeminiCredentialUseCase by lazy {
+        SaveGeminiCredentialUseCase(geminiCredentialRepository, studyAnalysisClient)
+    }
+
+    val checkStoredGeminiCredentialUseCase: CheckStoredGeminiCredentialUseCase by lazy {
+        CheckStoredGeminiCredentialUseCase(geminiCredentialRepository, studyAnalysisClient)
     }
 }

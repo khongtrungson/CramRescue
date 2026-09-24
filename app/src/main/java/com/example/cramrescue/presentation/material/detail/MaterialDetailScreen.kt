@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -20,8 +21,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,10 +42,35 @@ import kotlinx.coroutines.withContext
 @Composable
 fun MaterialDetailScreen(
     viewModelFactory: MaterialDetailViewModelFactory,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDeleted: () -> Unit
 ) {
     val viewModel: MaterialDetailViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.isDeleted) {
+        if (uiState.isDeleted) onDeleted()
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Xóa tài liệu?") },
+            text = { Text("Tài liệu và dữ liệu OCR liên quan sẽ bị xóa khỏi chiến dịch. Tệp gốc trên máy của bạn không bị ảnh hưởng.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    viewModel.delete()
+                }) {
+                    Text("Xóa", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) { Text("Hủy") }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -89,6 +119,20 @@ fun MaterialDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(if (uiState.isProcessingOcr) "Đang xử lý..." else "Trích xuất văn bản")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Disabled while OCR runs, so OCR can never re-insert rows for a deleted document.
+                TextButton(
+                    onClick = { showDeleteConfirmation = true },
+                    enabled = uiState.canDelete,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (uiState.isDeleting) "Đang xóa..." else "Xóa tài liệu",
+                        color = if (uiState.canDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 if (uiState.isProcessingOcr) {

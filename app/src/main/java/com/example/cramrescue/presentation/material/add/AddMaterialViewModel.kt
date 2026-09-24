@@ -30,9 +30,11 @@ class AddMaterialViewModel(
     private val _uiState = MutableStateFlow(AddMaterialUiState())
     val uiState: StateFlow<AddMaterialUiState> = _uiState.asStateFlow()
 
-    init {
-        // Show materials already persisted for this campaign (from an earlier session/process),
-        // not just ones added in this ViewModel instance's lifetime.
+    /**
+     * Reloads this campaign's materials from Room, the source of truth: persisted ones from an
+     * earlier session, minus any deleted from the detail screen in the meantime.
+     */
+    fun refresh() {
         viewModelScope.launch {
             val existing = sourceDocumentRepository.getDocumentsForCampaign(campaignId)
                 .map {
@@ -44,9 +46,7 @@ class AddMaterialViewModel(
                         pageCount = it.effectivePageCount
                     )
                 }
-            if (existing.isNotEmpty()) {
-                _uiState.update { it.copy(addedMaterials = existing) }
-            }
+            _uiState.update { it.copy(addedMaterials = existing) }
         }
     }
 

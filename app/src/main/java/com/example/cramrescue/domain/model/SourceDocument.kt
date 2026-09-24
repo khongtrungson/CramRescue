@@ -2,8 +2,9 @@ package com.example.cramrescue.domain.model
 
 import java.time.Instant
 
-// requirements.md FR-3 / Constraint 3: at most 20 pages may be ingested per document.
-const val MAX_DOCUMENT_PAGES = 20
+// Page ceiling per document (PDF import/OCR) and per campaign (AI analysis). requirements.md
+// FR-3 / Constraint 6.3 specify 20; raised to 50 by product-owner decision (2026-09-24).
+const val MAX_DOCUMENT_PAGES = 50
 
 enum class SourceType { CAMERA, GALLERY, PDF }
 

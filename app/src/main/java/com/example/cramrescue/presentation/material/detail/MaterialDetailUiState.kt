@@ -23,8 +23,14 @@ data class MaterialDetailUiState(
     val totalPages: Int = 0,
     val pages: List<OcrPageUi> = emptyList(),
     val hasResult: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isDeleting: Boolean = false,
+    /** Set once the material has been deleted; the screen then navigates away. */
+    val isDeleted: Boolean = false
 ) {
+    /** Deletion is blocked while OCR runs, so OCR can't re-insert rows for a deleted document. */
+    val canDelete: Boolean get() = !isLoadingDocument && !documentNotFound && !isProcessingOcr && !isDeleting
+
     val isPdf: Boolean get() = sourceType == SourceType.PDF
     val totalCharacterCount: Int get() = pages.sumOf { it.characterCount }
     val lowTextPageNumbers: List<Int> get() = pages.filter { it.isLowText }.map { it.pageNumber }

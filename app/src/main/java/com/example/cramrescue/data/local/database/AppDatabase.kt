@@ -9,6 +9,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.cramrescue.data.local.dao.CampaignDao
 import com.example.cramrescue.data.local.dao.OcrDao
 import com.example.cramrescue.data.local.dao.SourceDocumentDao
+import com.example.cramrescue.data.local.dao.StudyAnalysisDao
+import com.example.cramrescue.data.local.entity.AnalysisPriorityEntity
+import com.example.cramrescue.data.local.entity.AnalysisSourceRefEntity
+import com.example.cramrescue.data.local.entity.CampaignAnalysisEntity
 import com.example.cramrescue.data.local.entity.CampaignEntity
 import com.example.cramrescue.data.local.entity.OcrResultEntity
 import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
@@ -19,15 +23,19 @@ import com.example.cramrescue.data.local.entity.SourceDocumentEntity
         CampaignEntity::class,
         SourceDocumentEntity::class,
         OcrResultEntity::class,
-        OcrTextBlockEntity::class
+        OcrTextBlockEntity::class,
+        CampaignAnalysisEntity::class,
+        AnalysisPriorityEntity::class,
+        AnalysisSourceRefEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun campaignDao(): CampaignDao
     abstract fun sourceDocumentDao(): SourceDocumentDao
     abstract fun ocrDao(): OcrDao
+    abstract fun studyAnalysisDao(): StudyAnalysisDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -138,6 +146,65 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone 7: AI study analysis. Adds three new tables owned (via CASCADE) by campaigns;
+        // no existing table is altered, so Campaign / SourceDocument / per-page OCR data is untouched.
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `campaign_analyses` (
+                        `campaignId` INTEGER NOT NULL,
+                        `summary` TEXT NOT NULL,
+                        `discardedGreenCount` INTEGER NOT NULL,
+                        `analyzedPageCount` INTEGER NOT NULL,
+                        `lowTextPageCount` INTEGER NOT NULL,
+                        `sourceFingerprint` TEXT NOT NULL,
+                        `modelId` TEXT NOT NULL,
+                        `generatedAtEpochMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`campaignId`),
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `analysis_priorities` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `campaignId` INTEGER NOT NULL,
+                        `orderIndex` INTEGER NOT NULL,
+                        `triage` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `bullets` TEXT NOT NULL,
+                        `notes` TEXT,
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaign_analyses`(`campaignId`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_analysis_priorities_campaignId` ON `analysis_priorities` (`campaignId`)"
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `analysis_source_refs` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `priorityId` INTEGER NOT NULL,
+                        `documentId` INTEGER NOT NULL,
+                        `pageIndex` INTEGER NOT NULL,
+                        `blockOrderIndex` INTEGER NOT NULL,
+                        FOREIGN KEY(`priorityId`) REFERENCES `analysis_priorities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`documentId`) REFERENCES `source_documents`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_analysis_source_refs_priorityId` ON `analysis_source_refs` (`priorityId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_analysis_source_refs_documentId` ON `analysis_source_refs` (`documentId`)"
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -148,7 +215,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build().also { instance = it }
             }
     }
