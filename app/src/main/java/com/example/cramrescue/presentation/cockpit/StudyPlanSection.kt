@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -18,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.cramrescue.domain.mission.MissionFocus
+import com.example.cramrescue.domain.speedrun.SpeedRunPolicy
+import com.example.cramrescue.domain.speedrun.SpeedRunWindow
 import com.example.cramrescue.domain.usecase.mission.MissionPlan
 import com.example.cramrescue.domain.usecase.mission.ReadinessState
 import com.example.cramrescue.domain.usecase.mission.ReadinessUnavailableReason
@@ -28,6 +31,8 @@ import com.example.cramrescue.domain.usecase.mission.StudyPlan
 fun StudyPlanSection(
     plan: StudyPlan,
     isExamReached: Boolean,
+    speedRunWindow: SpeedRunWindow?,
+    onStartSpeedRun: () -> Unit,
     isStartingMission: Boolean,
     missionMessage: String?,
     onStartMission: () -> Unit
@@ -40,6 +45,10 @@ fun StudyPlanSection(
         Column(modifier = Modifier.padding(16.dp)) {
             Readiness(plan.readiness)
             Spacer(modifier = Modifier.height(16.dp))
+            if (speedRunWindow == SpeedRunWindow.OPEN && plan.mission != MissionPlan.NoCards) {
+                SpeedRun(plan, onStartSpeedRun)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             Mission(plan, isExamReached, isStartingMission, onStartMission)
             missionMessage?.let {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -117,6 +126,34 @@ private fun Mission(plan: StudyPlan, isExamReached: Boolean, isStarting: Boolean
             MissionButton("Bắt đầu nhiệm vụ", isStarting, onStart)
         }
     }
+}
+
+/** FR-13, shown only inside the FR-8 emergency window (never once the exam time is reached). */
+@Composable
+private fun SpeedRun(plan: StudyPlan, onStart: () -> Unit) {
+    Text(
+        text = "EMERGENCY SPEED-RUN",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.error
+    )
+    if (plan.speedRunCards.isEmpty()) {
+        val redTotal = (plan.readiness as? ReadinessState.Available)?.snapshot?.redTotal ?: 0
+        // UJ-3's closing state — only meaningful when Code Red cards exist and all are "Đã thuộc".
+        Fact(if (redTotal > 0) "Trạng thái sẵn sàng: Đã khóa kiến thức cốt lõi phòng thi." else "Không có thẻ Code Red nào để Speed-run.")
+        return
+    }
+    Fact("${plan.speedRunCards.size} thẻ Code Red chưa thuộc · mục tiêu ${SpeedRunPolicy.TARGET_MINUTES} phút")
+    if (plan.cardsStale) Fact("Thẻ thuộc bản phân tích cũ.")
+    Spacer(modifier = Modifier.height(8.dp))
+    Button(
+        onClick = onStart,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Bắt đầu Speed-run") }
 }
 
 @Composable

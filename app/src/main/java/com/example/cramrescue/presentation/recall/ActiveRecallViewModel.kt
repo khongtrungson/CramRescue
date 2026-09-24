@@ -3,6 +3,7 @@ package com.example.cramrescue.presentation.recall
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.cramrescue.domain.model.MicroCard
 import com.example.cramrescue.domain.model.RecallAssessment
 import com.example.cramrescue.domain.recall.RecallPrompt
 import com.example.cramrescue.domain.recall.RecallPromptBuilder
@@ -13,6 +14,9 @@ import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
 import com.example.cramrescue.domain.usecase.mission.GetMissionCardsUseCase
 import com.example.cramrescue.domain.usecase.recall.RecordAssessmentResult
 import com.example.cramrescue.domain.usecase.recall.RecordRecallAssessmentUseCase
+import com.example.cramrescue.domain.usecase.speedrun.GetSpeedRunCardsUseCase
+import com.example.cramrescue.domain.usecase.speedrun.SpeedRunStart
+import com.example.cramrescue.domain.speedrun.SpeedRunWindow
 import com.example.cramrescue.presentation.microcard.CardSourceResolver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,10 +30,11 @@ import kotlinx.coroutines.launch
  */
 class ActiveRecallViewModel(
     private val campaignId: Long,
-    /** Study the frozen Micro-mission (FR-10) instead of all cards; same engine either way. */
-    private val missionMode: Boolean,
+    /** Which cards to study; the engine is the same for every mode. */
+    private val mode: StudyMode,
     private val getMicroCards: GetMicroCardsUseCase,
     private val getMissionCards: GetMissionCardsUseCase,
+    private val getSpeedRunCards: GetSpeedRunCardsUseCase,
     private val recordAssessment: RecordRecallAssessmentUseCase
 ) : ViewModel() {
 
@@ -47,7 +52,7 @@ class ActiveRecallViewModel(
 
     /** "Ôn lại": a fresh session over the campaign's current cards; earlier attempts stay. */
     fun restart() {
-        if (missionMode || _uiState.value !is ActiveRecallUiState.Completed) return
+        if (mode != StudyMode.ALL || _uiState.value !is ActiveRecallUiState.Completed) return
         load()
     }
 
@@ -89,18 +94,33 @@ class ActiveRecallViewModel(
             cardsStale = state.cardsStale
             resolver = CardSourceResolver(state.source)
             errorMessage = null
-            // Mission: the remaining cards in their frozen mission order. Otherwise all current cards.
-            val cards = if (missionMode) getMissionCards(campaignId) else state.cards
-            session = if (missionMode) RecallSession.startInOrder(cards) else RecallSession.start(cards)
+            // Selected once here and frozen in the in-memory session: assessing a card never
+            // reorders or drops the remaining ones.
+            var emptyMessage = "Chưa có thẻ ghi nhớ để ôn tập. Hãy tạo thẻ từ phân tích AI trước."
+            val cards = when (mode) {
+                StudyMode.ALL -> state.cards
+                StudyMode.MISSION -> getMissionCards(campaignId).also { emptyMessage = "Nhiệm vụ này không còn thẻ nào cần ôn." }
+                StudyMode.SPEED_RUN -> when (val start = getSpeedRunCards(campaignId)) {
+                    is SpeedRunStart.Ready -> start.cards
+                    SpeedRunStart.NothingToReview -> emptyList<MicroCard>().also {
+                        emptyMessage = "Trạng thái sẵn sàng: Đã khóa kiến thức cốt lõi phòng thi — không còn thẻ Code Red nào chưa thuộc."
+                    }
+                    is SpeedRunStart.Closed -> emptyList<MicroCard>().also {
+                        emptyMessage = if (start.window == SpeedRunWindow.EXAM_REACHED) {
+                            "Đã đến giờ thi — Speed-run không còn khả dụng."
+                        } else {
+                            "Speed-run chỉ mở khi còn dưới 6 giờ trước giờ thi."
+                        }
+                    }
+                    SpeedRunStart.CampaignNotFound -> emptyList<MicroCard>().also {
+                        emptyMessage = "Không tìm thấy chiến dịch."
+                    }
+                }
+            }
+            session = if (mode == StudyMode.ALL) RecallSession.start(cards) else RecallSession.startInOrder(cards)
             if (cards.isEmpty()) {
                 session = null
-                _uiState.value = ActiveRecallUiState.NoCards(
-                    if (missionMode) {
-                        "Nhiệm vụ này không còn thẻ nào cần ôn."
-                    } else {
-                        "Chưa có thẻ ghi nhớ để ôn tập. Hãy tạo thẻ từ phân tích AI trước."
-                    }
-                )
+                _uiState.value = ActiveRecallUiState.NoCards(emptyMessage)
                 return@launch
             }
             publish()
@@ -110,7 +130,7 @@ class ActiveRecallViewModel(
     private fun publish() {
         val current = session ?: return
         if (current.phase == RecallSession.Phase.COMPLETED) {
-            _uiState.value = ActiveRecallUiState.Completed(current.total, current.summary(), isMission = missionMode)
+            _uiState.value = ActiveRecallUiState.Completed(current.total, current.summary(), mode = mode)
             return
         }
         val card = current.currentCard ?: return
@@ -131,7 +151,7 @@ class ActiveRecallViewModel(
         }
         _uiState.value = ActiveRecallUiState.Studying(
             cardId = card.id,
-            isMission = missionMode,
+            mode = mode,
             position = current.position,
             total = current.total,
             cardsStale = cardsStale,
@@ -147,13 +167,14 @@ class ActiveRecallViewModel(
 
 class ActiveRecallViewModelFactory(
     private val campaignId: Long,
-    private val missionMode: Boolean,
+    private val mode: StudyMode,
     private val getMicroCards: GetMicroCardsUseCase,
     private val getMissionCards: GetMissionCardsUseCase,
+    private val getSpeedRunCards: GetSpeedRunCardsUseCase,
     private val recordAssessment: RecordRecallAssessmentUseCase
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ActiveRecallViewModel(campaignId, missionMode, getMicroCards, getMissionCards, recordAssessment) as T
+        return ActiveRecallViewModel(campaignId, mode, getMicroCards, getMissionCards, getSpeedRunCards, recordAssessment) as T
     }
 }

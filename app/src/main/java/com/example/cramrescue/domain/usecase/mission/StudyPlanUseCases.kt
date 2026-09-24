@@ -11,6 +11,7 @@ import com.example.cramrescue.domain.progress.latestAssessments
 import com.example.cramrescue.domain.repository.CampaignRepository
 import com.example.cramrescue.domain.repository.MicroMissionRepository
 import com.example.cramrescue.domain.repository.StudyAttemptRepository
+import com.example.cramrescue.domain.speedrun.SpeedRunPolicy
 import com.example.cramrescue.domain.usecase.microcard.GetMicroCardsUseCase
 import java.time.Clock
 import java.time.Instant
@@ -39,7 +40,17 @@ sealed interface MissionPlan {
     data class Next(val cards: List<MicroCard>, val focus: MissionFocus) : MissionPlan
 }
 
-data class StudyPlan(val readiness: ReadinessState, val mission: MissionPlan, val cardsStale: Boolean)
+data class StudyPlan(
+    val readiness: ReadinessState,
+    val mission: MissionPlan,
+    val cardsStale: Boolean,
+    /**
+     * FR-13 Speed-run candidates (every Code Red card not yet "Đã thuộc"), independent of time.
+     * Whether Speed-run may start depends on the countdown, which the Cockpit applies per tick
+     * without re-reading the database.
+     */
+    val speedRunCards: List<MicroCard> = emptyList()
+)
 
 /** Local, read-only: derives Pass Probability and the mission plan from Room. No AI, no network. */
 class GetStudyPlanUseCase(
@@ -74,7 +85,7 @@ class GetStudyPlanUseCase(
                 MissionSelectionPolicy.focusOf(next)?.let { MissionPlan.Next(next, it) } ?: MissionPlan.AllMastered
             }
         }
-        return StudyPlan(readiness, mission, state.cardsStale)
+        return StudyPlan(readiness, mission, state.cardsStale, SpeedRunPolicy.select(cards, latest))
     }
 }
 

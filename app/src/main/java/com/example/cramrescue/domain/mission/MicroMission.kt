@@ -53,7 +53,11 @@ object MissionSelectionPolicy {
     const val MIN_MISSION_CARDS = 5
     const val MAX_MISSION_CARDS = 7
 
-    private fun priority(mastery: CardMastery): Int = when (mastery) {
+    /**
+     * Within-tier study urgency, shared by Micro-missions and Emergency Speed-run: "Chưa nhớ"
+     * (Redo soon) → never studied → "Tạm ổn" (Review in 2h) → "Đã thuộc".
+     */
+    fun priority(mastery: CardMastery): Int = when (mastery) {
         CardMastery.NOT_REMEMBERED -> 0
         CardMastery.UNSTUDIED -> 1
         CardMastery.PARTIAL -> 2

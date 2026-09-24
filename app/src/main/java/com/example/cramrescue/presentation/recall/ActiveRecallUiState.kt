@@ -38,7 +38,7 @@ sealed interface ActiveRecallUiState {
 
     data class Studying(
         val cardId: Long,
-        val isMission: Boolean,
+        val mode: StudyMode,
         val position: Int,
         val total: Int,
         /** The cards came from an older analysis / changed material (M8 stale rule). */
@@ -56,6 +56,6 @@ sealed interface ActiveRecallUiState {
     data class Completed(
         val total: Int,
         val counts: Map<RecallAssessment, Int>,
-        val isMission: Boolean
+        val mode: StudyMode
     ) : ActiveRecallUiState
 }

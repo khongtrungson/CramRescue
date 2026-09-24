@@ -80,7 +80,11 @@ private fun Studying(
     onOpenSource: (documentId: Long, pageIndex: Int) -> Unit
 ) {
     Text(
-        text = (if (state.isMission) "Nhiệm vụ · " else "") + "Thẻ ${state.position} / ${state.total}",
+        text = when (state.mode) {
+            StudyMode.ALL -> ""
+            StudyMode.MISSION -> "Nhiệm vụ · "
+            StudyMode.SPEED_RUN -> "Speed-run · "
+        } + "Thẻ ${state.position} / ${state.total}",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -242,8 +246,8 @@ private fun Completed(state: ActiveRecallUiState.Completed, onRestart: () -> Uni
         Spacer(modifier = Modifier.height(4.dp))
     }
     Spacer(modifier = Modifier.height(24.dp))
-    if (state.isMission) {
-        // The next mission is chosen from the updated results back on the Cockpit — never auto-started.
+    if (state.mode != StudyMode.ALL) {
+        // The next mission / Speed-run is chosen from the updated results back on the Cockpit — never auto-started.
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Về Buồng lái") }
     } else {
         Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Ôn lại") }

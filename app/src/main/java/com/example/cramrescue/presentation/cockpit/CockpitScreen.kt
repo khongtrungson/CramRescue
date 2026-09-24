@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cramrescue.domain.model.CampaignCountdown
+import com.example.cramrescue.domain.speedrun.SpeedRunPolicy
 import java.time.Duration
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -40,7 +41,8 @@ fun CockpitScreen(
     onOpenAnalysis: (Long) -> Unit,
     onOpenGeminiSettings: () -> Unit,
     onOpenMicroCards: (Long) -> Unit,
-    onStartMission: (Long) -> Unit
+    onStartMission: (Long) -> Unit,
+    onStartSpeedRun: (Long) -> Unit
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -163,6 +165,9 @@ fun CockpitScreen(
                             StudyPlanSection(
                                 plan = plan,
                                 isExamReached = uiState.countdown?.isExamReached == true,
+                                // Recomputed from the ticking countdown; no database work per tick.
+                                speedRunWindow = uiState.countdown?.let { SpeedRunPolicy.window(it) },
+                                onStartSpeedRun = { onStartSpeedRun(campaign.id) },
                                 isStartingMission = uiState.isStartingMission,
                                 missionMessage = uiState.missionMessage,
                                 onStartMission = { viewModel.startMission { onStartMission(campaign.id) } }

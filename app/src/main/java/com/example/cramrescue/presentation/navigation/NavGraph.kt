@@ -31,6 +31,7 @@ import com.example.cramrescue.presentation.grounding.SourceGroundingScreen
 import com.example.cramrescue.presentation.grounding.SourceGroundingViewModelFactory
 import com.example.cramrescue.presentation.recall.ActiveRecallScreen
 import com.example.cramrescue.presentation.recall.ActiveRecallViewModelFactory
+import com.example.cramrescue.presentation.recall.StudyMode
 import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 
@@ -116,7 +117,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Screen.MicroCards.createRoute(id))
                 },
                 onStartMission = { id ->
-                    navController.navigate(Screen.ActiveRecall.createRoute(id, mission = true))
+                    navController.navigate(Screen.ActiveRecall.createRoute(id, StudyMode.MISSION))
+                },
+                onStartSpeedRun = { id ->
+                    navController.navigate(Screen.ActiveRecall.createRoute(id, StudyMode.SPEED_RUN))
                 }
             )
         }
@@ -216,20 +220,22 @@ fun NavGraph(navController: NavHostController) {
             route = Screen.ActiveRecall.route,
             arguments = listOf(
                 navArgument(Screen.ActiveRecall.ARG_CAMPAIGN_ID) { type = NavType.LongType },
-                navArgument(Screen.ActiveRecall.ARG_MISSION) {
-                    type = NavType.BoolType
-                    defaultValue = false
+                navArgument(Screen.ActiveRecall.ARG_MODE) {
+                    type = NavType.StringType
+                    defaultValue = StudyMode.ALL.name
                 }
             )
         ) { backStackEntry ->
             val campaignId = backStackEntry.arguments?.getLong(Screen.ActiveRecall.ARG_CAMPAIGN_ID) ?: 0L
-            val missionMode = backStackEntry.arguments?.getBoolean(Screen.ActiveRecall.ARG_MISSION) ?: false
+            val mode = backStackEntry.arguments?.getString(Screen.ActiveRecall.ARG_MODE)
+                ?.let { name -> StudyMode.entries.firstOrNull { it.name == name } } ?: StudyMode.ALL
             ActiveRecallScreen(
                 viewModelFactory = ActiveRecallViewModelFactory(
                     campaignId,
-                    missionMode,
+                    mode,
                     application.getMicroCardsUseCase,
                     application.getMissionCardsUseCase,
+                    application.getSpeedRunCardsUseCase,
                     application.recordRecallAssessmentUseCase
                 ),
                 onBack = { navController.popBackStack() },

@@ -28,6 +28,7 @@ import com.example.cramrescue.domain.usecase.analysis.GenerateCampaignAnalysisUs
 import com.example.cramrescue.domain.usecase.analysis.GetAnalysisSourceUseCase
 import com.example.cramrescue.domain.usecase.analysis.GetCampaignAnalysisUseCase
 import com.example.cramrescue.domain.usecase.grounding.GetGroundedSourceUseCase
+import com.example.cramrescue.domain.usecase.speedrun.GetSpeedRunCardsUseCase
 import com.example.cramrescue.domain.usecase.material.DeleteSourceDocumentUseCase
 import com.example.cramrescue.presentation.grounding.SourcePageLoader
 import com.example.cramrescue.domain.usecase.microcard.CreateMicroCardsUseCase
@@ -153,4 +154,9 @@ class CramRescueApplication : Application() {
     }
 
     val sourcePageLoader: SourcePageLoader by lazy { SourcePageLoader(pdfPageRenderer) }
+
+    // Milestone 12: Emergency Speed-run — selection only; study runs on the M9 engine.
+    val getSpeedRunCardsUseCase: GetSpeedRunCardsUseCase by lazy {
+        GetSpeedRunCardsUseCase(campaignRepository, getMicroCardsUseCase, studyAttemptRepository)
+    }
 }

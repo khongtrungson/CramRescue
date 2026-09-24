@@ -1,5 +1,7 @@
 package com.example.cramrescue.presentation.navigation
 
+import com.example.cramrescue.presentation.recall.StudyMode
+
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object CreateCampaign : Screen("create_campaign")
@@ -37,11 +39,11 @@ sealed class Screen(val route: String) {
         fun createRoute(campaignId: Long, cardId: Long) = "micro_card_detail/$campaignId/$cardId"
     }
 
-    data object ActiveRecall : Screen("active_recall/{campaignId}?mission={mission}") {
+    data object ActiveRecall : Screen("active_recall/{campaignId}?mode={mode}") {
         const val ARG_CAMPAIGN_ID = "campaignId"
-        const val ARG_MISSION = "mission"
-        /** [mission]: study the campaign's current Micro-mission instead of all cards. */
-        fun createRoute(campaignId: Long, mission: Boolean = false) = "active_recall/$campaignId?mission=$mission"
+        const val ARG_MODE = "mode"
+        /** [mode]: all cards, the current Micro-mission, or an Emergency Speed-run. */
+        fun createRoute(campaignId: Long, mode: StudyMode = StudyMode.ALL) = "active_recall/$campaignId?mode=${mode.name}"
     }
 
     // Identity only; the destination re-resolves and re-checks everything from Room.

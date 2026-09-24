@@ -270,6 +270,21 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - PDFs reuse the M6 `PdfPageRenderer` and render only the requested page.
 - In Active Recall, sources become reachable only after Reveal.
 
+## Emergency Speed-run
+
+- FR-13: every current Code Red card whose latest attempt isn't "Đã thuộc" — Yellow, mastered
+  and Green skipped, no count cap ("toàn bộ"); 10 minutes is a displayed target, not enforced.
+  Order (assumption): Chưa nhớ → never studied → Tạm ổn → card order, via the shared
+  `MissionSelectionPolicy.priority`. Policy lives only in `SpeedRunPolicy`.
+- Emergency comes only from `CampaignCountdown` (FR-8); `SpeedRunPolicy.window` separates the
+  open window from "exam reached". Speed-run is user-started, never automatic, and the Cockpit
+  decides visibility from the ticking countdown without per-tick database work.
+- It is a `StudyMode` of the one Active Recall engine (selection frozen at session start, same
+  prompts/reveal/assessment/attempts/sources) — never a second study screen. Not persisted
+  (FR-13 has no resume); results are ordinary `StudyAttempt`s feeding FR-9 unchanged.
+- Known MVP semantics: a Speed-run result on a card of an unfinished Micro-mission advances that
+  mission (attempts carry no provenance).
+
 ## Secrets (BYOK Gemini Key)
 
 - The key is stored only through `GeminiCredentialRepository`: AES-GCM with a non-exportable
