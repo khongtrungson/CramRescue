@@ -40,6 +40,17 @@ data class OcrResult(
     val blockCount: Int get() = pages.sumOf { it.blocks.size }
     val lowTextPageIndices: List<Int> get() = pages.filter { it.isLowText }.map { it.pageIndex }
 
+    /**
+     * The OCR block a [SourceRef] points to — including its bounding box, relative to that page's
+     * [OcrPageResult.sourceWidthPx] x [OcrPageResult.sourceHeightPx] — or null if it isn't in
+     * this result (another document, or OCR re-run since the ref was made).
+     */
+    fun blockAt(ref: SourceRef): OcrTextBlock? {
+        if (ref.documentId != documentId) return null
+        return pages.firstOrNull { it.pageIndex == ref.pageIndex }
+            ?.blocks?.firstOrNull { it.orderIndex == ref.blockOrderIndex }
+    }
+
     /** Deterministic whole-document text, pages in order, blank line between pages. */
     fun reconstructedText(): String =
         pages.sortedBy { it.pageIndex }.joinToString("\n\n") { it.reconstructedText() }

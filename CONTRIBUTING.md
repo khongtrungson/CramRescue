@@ -194,6 +194,25 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   `sourceFingerprint` with the campaign's current material.
 - Tests use a fake `StudyAnalysisClient`; no test may need a real key.
 
+## MicroCards
+
+- MicroCards are **built locally** from the campaign's current analysis (`MicroCardBuilder`); M8
+  makes no AI call. Each Code Red / Code Yellow priority becomes at most one card; Code Green never
+  becomes a card (FR-5 keeps only its count).
+- Cards copy the priority's content and source refs into `micro_cards` / `micro_card_source_refs`
+  so they survive analysis regeneration; `analysisGeneratedAtEpochMillis` records which analysis
+  generation they came from.
+- A card set is current only if the analysis still exists, is not stale, and has the same
+  `generatedAt`. Otherwise it is shown as stale until the user explicitly rebuilds it — never
+  rebuilt or re-analysed automatically.
+- Rebuilding requires a current analysis, validates the whole set (every source ref must resolve
+  to a current OCR block of the same campaign), then replaces the old set in one transaction.
+- Card source refs use the same `(documentId, pageIndex, blockOrderIndex)` identity as analysis
+  refs; `OcrResult.blockAt(ref)` recovers the block and its bounding box for Source Grounding.
+- Deleting a material removes card refs to it (like analysis refs); cards stay, shown as stale.
+- Don't add study state (mastery, scheduling, cloze keywords) to MicroCard before the Active
+  Recall milestone needs it.
+
 ## Secrets (BYOK Gemini Key)
 
 - The key is stored only through `GeminiCredentialRepository`: AES-GCM with a non-exportable

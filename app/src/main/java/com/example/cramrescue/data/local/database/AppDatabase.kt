@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.cramrescue.data.local.dao.CampaignDao
+import com.example.cramrescue.data.local.dao.MicroCardDao
 import com.example.cramrescue.data.local.dao.OcrDao
 import com.example.cramrescue.data.local.dao.SourceDocumentDao
 import com.example.cramrescue.data.local.dao.StudyAnalysisDao
@@ -14,6 +15,8 @@ import com.example.cramrescue.data.local.entity.AnalysisPriorityEntity
 import com.example.cramrescue.data.local.entity.AnalysisSourceRefEntity
 import com.example.cramrescue.data.local.entity.CampaignAnalysisEntity
 import com.example.cramrescue.data.local.entity.CampaignEntity
+import com.example.cramrescue.data.local.entity.MicroCardEntity
+import com.example.cramrescue.data.local.entity.MicroCardSourceRefEntity
 import com.example.cramrescue.data.local.entity.OcrResultEntity
 import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 import com.example.cramrescue.data.local.entity.SourceDocumentEntity
@@ -26,9 +29,11 @@ import com.example.cramrescue.data.local.entity.SourceDocumentEntity
         OcrTextBlockEntity::class,
         CampaignAnalysisEntity::class,
         AnalysisPriorityEntity::class,
-        AnalysisSourceRefEntity::class
+        AnalysisSourceRefEntity::class,
+        MicroCardEntity::class,
+        MicroCardSourceRefEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDocumentDao(): SourceDocumentDao
     abstract fun ocrDao(): OcrDao
     abstract fun studyAnalysisDao(): StudyAnalysisDao
+    abstract fun microCardDao(): MicroCardDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -205,6 +211,49 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone 8: MicroCards. Adds two tables owned (via CASCADE) by campaigns / cards; no
+        // existing table is altered, so all M2–M7 data (including analyses) is untouched.
+        val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `micro_cards` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `campaignId` INTEGER NOT NULL,
+                        `analysisGeneratedAtEpochMillis` INTEGER NOT NULL,
+                        `orderIndex` INTEGER NOT NULL,
+                        `triage` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `bullets` TEXT NOT NULL,
+                        `notes` TEXT,
+                        `createdAtEpochMillis` INTEGER NOT NULL,
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_micro_cards_campaignId` ON `micro_cards` (`campaignId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `micro_card_source_refs` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `microCardId` INTEGER NOT NULL,
+                        `documentId` INTEGER NOT NULL,
+                        `pageIndex` INTEGER NOT NULL,
+                        `blockOrderIndex` INTEGER NOT NULL,
+                        FOREIGN KEY(`microCardId`) REFERENCES `micro_cards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`documentId`) REFERENCES `source_documents`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_micro_card_source_refs_microCardId` ON `micro_card_source_refs` (`microCardId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_micro_card_source_refs_documentId` ON `micro_card_source_refs` (`documentId`)"
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -215,7 +264,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build().also { instance = it }
             }
     }

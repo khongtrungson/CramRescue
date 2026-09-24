@@ -27,6 +27,16 @@ sealed class Screen(val route: String) {
         fun createRoute(campaignId: Long) = "campaign_analysis/$campaignId"
     }
 
+    data object MicroCards : Screen("micro_cards/{campaignId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        fun createRoute(campaignId: Long) = "micro_cards/$campaignId"
+    }
+    data object MicroCardDetail : Screen("micro_card_detail/{campaignId}/{cardId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        const val ARG_CARD_ID = "cardId"
+        fun createRoute(campaignId: Long, cardId: Long) = "micro_card_detail/$campaignId/$cardId"
+    }
+
     // No arguments: the key is never passed through navigation.
     data object GeminiSettings : Screen("gemini_settings")
 }

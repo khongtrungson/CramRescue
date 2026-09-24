@@ -35,7 +35,8 @@ fun CockpitScreen(
     onBackToHome: () -> Unit,
     onAddMaterials: (Long) -> Unit,
     onOpenAnalysis: (Long) -> Unit,
-    onOpenGeminiSettings: () -> Unit
+    onOpenGeminiSettings: () -> Unit,
+    onOpenMicroCards: (Long) -> Unit
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -158,6 +159,12 @@ fun CockpitScreen(
 
                         OutlinedButton(onClick = { onOpenAnalysis(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Phân tích AI (Pareto 80/20)")
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedButton(onClick = { onOpenMicroCards(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Thẻ ghi nhớ (Micro-Card)")
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))

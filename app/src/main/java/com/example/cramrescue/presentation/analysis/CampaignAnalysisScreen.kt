@@ -38,7 +38,8 @@ import com.example.cramrescue.ui.theme.OnCodeYellow
 fun CampaignAnalysisScreen(
     viewModelFactory: CampaignAnalysisViewModelFactory,
     onBack: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenMicroCards: () -> Unit
 ) {
     val viewModel: CampaignAnalysisViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -137,6 +138,10 @@ fun CampaignAnalysisScreen(
 
         val result = uiState.result
         if (result != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onOpenMicroCards, modifier = Modifier.fillMaxWidth()) {
+                Text("Xem thẻ ghi nhớ (Micro-Card)")
+            }
             Spacer(modifier = Modifier.height(24.dp))
             AnalysisResult(result)
         }
@@ -244,7 +249,7 @@ private fun PriorityItem(priority: PriorityUi) {
 }
 
 @Composable
-private fun TriageBadge(triage: TriageLevel) {
+internal fun TriageBadge(triage: TriageLevel) {
     // Semantic triage colors as small signals only (CONTRIBUTING.md "UI / Design System").
     val (label, container, content) = when (triage) {
         TriageLevel.CODE_RED -> Triple("CODE RED", CodeRed, OnCodeRed)

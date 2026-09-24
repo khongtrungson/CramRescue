@@ -23,6 +23,10 @@ import com.example.cramrescue.presentation.material.add.AddMaterialScreen
 import com.example.cramrescue.presentation.material.add.AddMaterialViewModelFactory
 import com.example.cramrescue.presentation.material.detail.MaterialDetailScreen
 import com.example.cramrescue.presentation.material.detail.MaterialDetailViewModelFactory
+import com.example.cramrescue.presentation.microcard.detail.MicroCardDetailScreen
+import com.example.cramrescue.presentation.microcard.detail.MicroCardDetailViewModelFactory
+import com.example.cramrescue.presentation.microcard.list.MicroCardsScreen
+import com.example.cramrescue.presentation.microcard.list.MicroCardsViewModelFactory
 import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 
@@ -98,7 +102,10 @@ fun NavGraph(navController: NavHostController) {
                 onOpenAnalysis = { id ->
                     navController.navigate(Screen.CampaignAnalysis.createRoute(id))
                 },
-                onOpenGeminiSettings = { navController.navigate(Screen.GeminiSettings.route) }
+                onOpenGeminiSettings = { navController.navigate(Screen.GeminiSettings.route) },
+                onOpenMicroCards = { id ->
+                    navController.navigate(Screen.MicroCards.createRoute(id))
+                }
             )
         }
 
@@ -165,7 +172,44 @@ fun NavGraph(navController: NavHostController) {
             CampaignAnalysisScreen(
                 viewModelFactory = factory,
                 onBack = { navController.popBackStack() },
-                onOpenSettings = { navController.navigate(Screen.GeminiSettings.route) }
+                onOpenSettings = { navController.navigate(Screen.GeminiSettings.route) },
+                onOpenMicroCards = { navController.navigate(Screen.MicroCards.createRoute(campaignId)) }
+            )
+        }
+
+        composable(
+            route = Screen.MicroCards.route,
+            arguments = listOf(navArgument(Screen.MicroCards.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.MicroCards.ARG_CAMPAIGN_ID) ?: 0L
+            val factory = MicroCardsViewModelFactory(
+                campaignId,
+                application.campaignRepository,
+                application.getMicroCardsUseCase,
+                application.createMicroCardsUseCase
+            )
+            MicroCardsScreen(
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onOpenAnalysis = { navController.navigate(Screen.CampaignAnalysis.createRoute(campaignId)) },
+                onOpenCard = { cardId ->
+                    navController.navigate(Screen.MicroCardDetail.createRoute(campaignId, cardId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.MicroCardDetail.route,
+            arguments = listOf(
+                navArgument(Screen.MicroCardDetail.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.MicroCardDetail.ARG_CARD_ID) { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.MicroCardDetail.ARG_CAMPAIGN_ID) ?: 0L
+            val cardId = backStackEntry.arguments?.getLong(Screen.MicroCardDetail.ARG_CARD_ID) ?: 0L
+            MicroCardDetailScreen(
+                viewModelFactory = MicroCardDetailViewModelFactory(campaignId, cardId, application.getMicroCardsUseCase),
+                onBack = { navController.popBackStack() }
             )
         }
 
