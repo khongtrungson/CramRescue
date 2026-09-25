@@ -75,7 +75,8 @@ object StudyAnalysisPromptBuilder {
         appendLine(MATERIAL_START)
         source.pages.forEach { page ->
             val quality = if (page.isLowText) " (OCR chất lượng thấp)" else ""
-            appendLine("# Tài liệu ${page.documentNumber}: ${page.documentLabel.neutralize()} — Trang ${page.pageIndex + 1}$quality")
+            val location = if (page.isWord) "văn bản Word (đoạn văn)" else "Trang ${page.pageIndex + 1}$quality"
+            appendLine("# Tài liệu ${page.documentNumber}: ${page.documentLabel.neutralize()} — $location")
             page.blocks.forEach { block -> appendLine("[${block.refId}] ${block.text.neutralize()}") }
         }
         append(MATERIAL_END)

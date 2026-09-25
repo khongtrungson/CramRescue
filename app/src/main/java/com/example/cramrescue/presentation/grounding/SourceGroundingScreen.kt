@@ -73,6 +73,7 @@ fun SourceGroundingScreen(
             is SourceGroundingUiState.Unavailable -> Message(unavailableMessage(state.reason))
             is SourceGroundingUiState.RenderError -> Message(renderErrorMessage(state.failure))
             is SourceGroundingUiState.Success -> GroundedSourceContent(state.source, state.bitmap)
+            is SourceGroundingUiState.SuccessText -> TextGroundedSourceContent(state.source)
         }
     }
 }

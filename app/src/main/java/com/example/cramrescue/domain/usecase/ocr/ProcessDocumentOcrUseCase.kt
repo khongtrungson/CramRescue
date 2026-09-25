@@ -43,11 +43,16 @@ class ProcessDocumentOcrUseCase(
     ): ProcessDocumentOcrResult {
         val document = sourceDocumentRepository.getDocumentById(documentId)
             ?: return ProcessDocumentOcrResult.DocumentNotFound
+        // FR-4 OCR covers image/PDF pages only; Word text is extracted at import (FR-3).
+        if (document.sourceType == SourceType.WORD) {
+            return ProcessDocumentOcrResult.Failure("Tài liệu Word đã được trích xuất văn bản khi nhập, không cần OCR.")
+        }
 
         return runCatching {
             val pages = when (document.sourceType) {
                 SourceType.PDF -> recognizePdfPages(document, onProgress)
                 SourceType.CAMERA, SourceType.GALLERY -> recognizeSinglePage(document, onProgress)
+                SourceType.WORD -> error("unreachable: Word is rejected above")
             }
             val result = OcrResult(documentId = document.id, pages = pages)
             ocrRepository.saveResult(result)

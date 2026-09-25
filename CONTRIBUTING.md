@@ -142,13 +142,35 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   whatever future per-campaign data is added).
 - Campaign-owned data must be explicitly associated with the relevant Campaign, directly (a
   `campaignId` column/field) or through a clearly defined parent relationship.
-- Downstream features must not call `getLatestCampaign()` to infer ownership. `campaignId` should
-  come from explicit application/navigation state (e.g. a nav argument), passed down from wherever
-  the campaign was actually loaded.
-- `getLatestCampaign()` is currently only an MVP startup/resume policy (which campaign Home
-  reopens into) — it must never become a global assumption that the app only has one Campaign.
-- New schemas/APIs should stay multi-campaign-ready even while multi-campaign *management* UI
-  doesn't exist yet: query shapes like `getXForCampaign(campaignId)`, not `getLatestX()`.
+- `campaignId` always comes from explicit navigation state (a nav argument), passed down from the
+  Campaign the user chose. There is no "latest" or "current" Campaign anywhere — no global
+  current-campaign holder, and repositories never infer one. (`getLatestCampaign()` was removed
+  in M14.)
+- Query shapes are `getXForCampaign(campaignId)`, never `getLatestX()`.
+
+## Campaign Management
+
+- Home lists every Campaign (`CampaignListPolicy`): exam still ahead first, nearest exam first;
+  then exam reached, most recent first; ties by id. Status (upcoming / "Khẩn cấp" / "Đã đến giờ
+  thi") is derived from `CampaignCountdown` — never persisted. One shared 30 s tick re-derives the
+  rows; no per-row timers and no database work per tick. Past Campaigns are kept until the user
+  deletes them.
+- Editable: name and exam time only (`UpdateCampaignUseCase`, rules in the shared
+  `CampaignValidator`, also used by Create). The exam-time rule (future, ≤ 7 days) applies only
+  when the exam time changes, so a past Campaign can be renamed. The subject archetype is
+  **not** editable: the analysis prompt depends on it (FR-7) and a stored analysis doesn't record
+  which archetype produced it. An edit changes only the Campaign row — never materials, analysis,
+  cards, attempts or missions — and triggers no OCR/AI.
+- Deletion (`DeleteCampaignUseCase`) needs the explicit confirmation dialog. `deleteCampaignGraph`
+  reads the documents' file paths and deletes the Campaign row in one transaction; every owned
+  table cascades from it (verified by `CampaignDeletionTest`). Only after commit are the files
+  removed via `MaterialFileStore.deleteOwnedFile` (app materials dir only — a user's original is
+  never touched; a missing file counts as deleted). Room and the filesystem are not atomic: a DB
+  failure deletes nothing and can be retried; a file that can't be removed is left unreferenced
+  in app-private storage and reported as a count. No background cleanup.
+- After deleting, navigate to Home with `popUpTo(Home) { inclusive = true }` so Back can never
+  reopen a screen of the deleted Campaign. Screens re-read their Campaign on (re)entry (Home list,
+  Cockpit), so edits show up without restarting.
 
 ## Document / Page Ownership
 
@@ -170,6 +192,27 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - Persist enough source-dimension/page information to interpret those coordinates later.
 - Do not discard bounding boxes because Source Grounding depends on them.
 
+## Word (.docx) Documents
+
+- Only `.docx` (Office Open XML) is supported. Legacy `.doc` and password-protected files (both
+  OLE containers) are detected by magic bytes and rejected with a "save as .docx" message — never
+  claim `.doc` support.
+- Extraction is local and offline: `DocxTextExtractor` (`java.util.zip` + a streaming
+  `XmlPullParser`, no third-party library, no OCR, no network). Treat the file as hostile: size
+  caps on decompressed parts, entry-count cap, DOCTYPE never processed, and a truncated main part
+  is MALFORMED (partial text is never imported). Body paragraphs and table rows only; text boxes,
+  drawings, headers/footers, footnotes, comments and tracked deletions are excluded.
+- Word text is stored in `document_text_blocks` (identity `(documentId, orderIndex)`), not in the
+  OCR tables: Word has no pages, pixel dimensions or bounding boxes, and none may be invented.
+  A Word document is one logical section, `pageIndex = WORD_LOGICAL_SECTION_INDEX` (0), which is
+  never displayed as a page — the UI says "đoạn N" / "văn bản Word".
+- Import is all-or-nothing: extract → reject empty / > 10,000 words (FR-3, never truncated) → save
+  the `source_documents` row and its paragraphs in one transaction. On any failure the app-owned
+  copy is deleted.
+- Page ceilings count Word as `ceil(words / 500)` page-equivalents (FR-3 assumption).
+- Word contributes `"id:w@extractedAt"` to the analysis fingerprint; the image/PDF format is
+  unchanged so existing analyses stay current.
+
 ## AI Analysis (Gemini) Boundary
 
 - Gemini networking lives only in `data/remote/` (`GeminiStudyAnalysisClient`, `GeminiJson`). The
@@ -177,7 +220,8 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 - The model id, base URL and timeouts live only in `GeminiConfig`. Don't name a model anywhere else.
 - Only the official endpoint (`generativelanguage.googleapis.com`) over HTTPS with default
   certificate validation. No other network endpoint, no analytics, no telemetry, no own backend.
-- Gemini receives **OCR text only** — never images, PDFs, rendered pages or bounding boxes.
+- Gemini receives **text only** — OCR text and locally extracted Word paragraphs — never images,
+  PDFs, Word files, rendered pages or bounding boxes.
 - AI input is built by `AnalysisSource.assemble(campaignId, …)` in document → page → block order.
   Each block gets a request-local ref (`B1…Bn`) mapping to `(documentId, pageIndex, orderIndex)` —
   the stable block identity (OCR row ids change on reprocessing).
@@ -268,6 +312,10 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   on every container size change. Boxes are drawn individually; the union is only for focus;
   visual padding is never used to correct geometry.
 - PDFs reuse the M6 `PdfPageRenderer` and render only the requested page.
+- Word sources (FR-14) are grounded as a **text snippet**: the document's paragraphs with the
+  cited ones highlighted (`TextGroundedSourceContent`). Same identity rules — exact
+  `orderIndex`, SOURCE_CHANGED if re-extracted after the card was built, no text matching — and
+  no page image or bounding box is ever simulated.
 - In Active Recall, sources become reachable only after Reveal.
 
 ## Emergency Speed-run

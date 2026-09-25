@@ -32,29 +32,35 @@ class CockpitViewModel(
     val uiState: StateFlow<CockpitUiState> = _uiState.asStateFlow()
 
     init {
+        // Recompute remaining time from the exam timestamp on every tick, rather than decrementing a
+        // stored value, so drift can't accumulate. It always uses the most recently loaded Campaign,
+        // so an exam time edited in M14's Manage screen takes effect on return. Nothing (Campaign,
+        // Pass Probability, mission) is read from Room per tick — see refresh().
         viewModelScope.launch {
-            val campaign = campaignRepository.getCampaignById(campaignId)
-            if (campaign == null) {
-                _uiState.update { it.copy(isLoading = false, campaignNotFound = true) }
-                return@launch
-            }
-
-            _uiState.update { it.copy(isLoading = false, campaign = campaign) }
-
-            // Recompute remaining time from the exam timestamp on every tick. Study data (Pass
-            // Probability, mission) is NOT reloaded here — see refreshStudyPlan(). rather than
-            // decrementing a stored value, so drift can't accumulate and re-entry is safe.
             while (isActive) {
-                val countdown = CampaignCountdown.from(campaign.examDateTime, Instant.now(clock))
-                _uiState.update { it.copy(countdown = countdown) }
+                val campaign = _uiState.value.campaign
+                if (campaign != null) {
+                    val countdown = CampaignCountdown.from(campaign.examDateTime, Instant.now(clock))
+                    _uiState.update { it.copy(countdown = countdown) }
+                }
                 delay(TICK_INTERVAL_MILLIS)
             }
         }
     }
 
-    /** Local read of study state, on screen (re)entry — e.g. back from a mission. Never calls Gemini. */
-    fun refreshStudyPlan() {
+    /**
+     * Local re-read of the Campaign and its study state on screen (re)entry — e.g. back from a
+     * mission or from editing the Campaign. Never calls Gemini.
+     */
+    fun refresh() {
         viewModelScope.launch {
+            val campaign = campaignRepository.getCampaignById(campaignId)
+            if (campaign == null) {
+                _uiState.update { it.copy(isLoading = false, campaign = null, countdown = null, campaignNotFound = true) }
+                return@launch
+            }
+            val countdown = CampaignCountdown.from(campaign.examDateTime, Instant.now(clock))
+            _uiState.update { it.copy(isLoading = false, campaign = campaign, countdown = countdown, campaignNotFound = false) }
             val plan = getStudyPlan(campaignId)
             _uiState.update { it.copy(studyPlan = plan) }
         }

@@ -60,6 +60,8 @@ dependencies {
     testImplementation(libs.junit)
     // Android's org.json is stubbed in local unit tests; the real implementation for GeminiJson tests.
     testImplementation(libs.org.json)
+    // Test-only XmlPullParser for DocxTextExtractor JVM tests (Android provides one at runtime).
+    testImplementation(libs.kxml2)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -152,6 +152,7 @@ fun CampaignAnalysisScreen(
 private fun MaterialStatus(uiState: CampaignAnalysisUiState) {
     val lines = buildList {
         add("${uiState.usablePageCount} trang có văn bản OCR")
+        if (uiState.wordDocumentCount > 0) add("${uiState.wordDocumentCount} tài liệu Word (văn bản đoạn văn)")
         if (uiState.lowTextPageCount > 0) add("${uiState.lowTextPageCount} trang chất lượng OCR thấp (vẫn gửi, có đánh dấu)")
         if (uiState.emptyPageCount > 0) add("${uiState.emptyPageCount} trang trống (bỏ qua)")
         if (uiState.documentsWithoutOcr > 0) add("${uiState.documentsWithoutOcr} tài liệu chưa trích xuất văn bản (bỏ qua)")

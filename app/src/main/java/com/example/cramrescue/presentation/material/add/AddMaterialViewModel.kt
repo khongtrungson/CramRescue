@@ -10,6 +10,10 @@ import com.example.cramrescue.domain.model.SourceDocument
 import com.example.cramrescue.domain.model.SourceType
 import com.example.cramrescue.domain.pdf.PdfPageRenderer
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
+import com.example.cramrescue.domain.model.MAX_WORD_DOCUMENT_WORDS
+import com.example.cramrescue.domain.usecase.word.ImportWordDocumentUseCase
+import com.example.cramrescue.domain.usecase.word.WordImportResult
+import com.example.cramrescue.domain.word.WordExtractionFailure
 import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +28,7 @@ class AddMaterialViewModel(
     private val materialFileStore: MaterialFileStore,
     private val sourceDocumentRepository: SourceDocumentRepository,
     private val pdfPageRenderer: PdfPageRenderer,
+    private val importWordDocument: ImportWordDocumentUseCase,
     private val campaignId: Long
 ) : ViewModel() {
 
@@ -174,6 +179,53 @@ class AddMaterialViewModel(
         }
     }
 
+    /**
+     * Imports a picked Word file (FR-3): copy into app storage, extract its text locally, then save
+     * the document and its text atomically. Any failure removes the copy, so nothing is left behind.
+     */
+    fun onWordSelected(uri: Uri?) {
+        if (uri == null) return // user cancelled — no-op
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+            val displayName = materialFileStore.readDisplayName(uri)
+            val path = runCatching { materialFileStore.copyWordFrom(uri) }.getOrElse {
+                _uiState.update { state -> state.copy(isSaving = false, errorMessage = "Không thể đọc tệp Word đã chọn.") }
+                return@launch
+            }
+
+            when (val result = importWordDocument(campaignId, path, displayName)) {
+                is WordImportResult.Imported -> _uiState.update { state ->
+                    state.copy(
+                        isSaving = false,
+                        addedMaterials = state.addedMaterials +
+                            MaterialPreviewItem(result.documentId, path, SourceType.WORD, displayName, pageCount = 1)
+                    )
+                }
+                else -> {
+                    materialFileStore.delete(path)
+                    _uiState.update { state -> state.copy(isSaving = false, errorMessage = wordErrorMessage(result)) }
+                }
+            }
+        }
+    }
+
+    private fun wordErrorMessage(result: WordImportResult): String = when (result) {
+        is WordImportResult.Imported -> ""
+        WordImportResult.NoText -> "Tài liệu Word không có nội dung văn bản."
+        is WordImportResult.TooManyWords ->
+            "Tài liệu Word có ${result.wordCount} từ, vượt giới hạn $MAX_WORD_DOCUMENT_WORDS từ. Hãy tách tài liệu và chọn phần trọng tâm."
+        WordImportResult.SaveFailed -> "Không thể lưu tài liệu Word."
+        is WordImportResult.Unreadable -> when (result.reason) {
+            WordExtractionFailure.LEGACY_DOC_OR_ENCRYPTED ->
+                "Tệp là định dạng Word cũ (.doc) hoặc đã đặt mật khẩu — chưa được hỗ trợ. Hãy lưu lại dưới dạng .docx (không mật khẩu)."
+            WordExtractionFailure.NOT_DOCX -> "Tệp đã chọn không phải tài liệu Word .docx hợp lệ."
+            WordExtractionFailure.MALFORMED -> "Tệp Word bị hỏng hoặc không đọc được."
+            WordExtractionFailure.TOO_LARGE -> "Tệp Word quá lớn để xử lý an toàn."
+            WordExtractionFailure.EMPTY_FILE -> "Tệp Word trống."
+        }
+    }
+
     private suspend fun saveDocument(
         path: String,
         sourceType: SourceType,
@@ -197,10 +249,11 @@ class AddMaterialViewModelFactory(
     private val materialFileStore: MaterialFileStore,
     private val sourceDocumentRepository: SourceDocumentRepository,
     private val pdfPageRenderer: PdfPageRenderer,
+    private val importWordDocument: ImportWordDocumentUseCase,
     private val campaignId: Long
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return AddMaterialViewModel(materialFileStore, sourceDocumentRepository, pdfPageRenderer, campaignId) as T
+        return AddMaterialViewModel(materialFileStore, sourceDocumentRepository, pdfPageRenderer, importWordDocument, campaignId) as T
     }
 }

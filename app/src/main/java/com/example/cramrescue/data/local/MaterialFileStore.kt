@@ -37,6 +37,9 @@ class MaterialFileStore(private val context: Context) {
      */
     suspend fun copyFrom(sourceUri: Uri): String = copyInto(sourceUri, extension = "jpg")
 
+    /** Copies a picked Word (.docx) file into app-private storage, same ownership model. */
+    suspend fun copyWordFrom(sourceUri: Uri): String = copyInto(sourceUri, extension = "docx")
+
     /** Copies a picked PDF into app-private storage, same ownership model as images. */
     suspend fun copyPdfFrom(sourceUri: Uri): String = copyInto(sourceUri, extension = "pdf")
 

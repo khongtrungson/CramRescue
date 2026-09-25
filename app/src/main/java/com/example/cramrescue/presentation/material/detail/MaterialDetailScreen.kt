@@ -57,7 +57,10 @@ fun MaterialDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
             title = { Text("Xóa tài liệu?") },
-            text = { Text("Tài liệu và dữ liệu OCR liên quan sẽ bị xóa khỏi chiến dịch. Tệp gốc trên máy của bạn không bị ảnh hưởng.") },
+            text = {
+                val data = if (uiState.isWord) "văn bản đã trích xuất" else "dữ liệu OCR liên quan"
+                Text("Tài liệu và $data sẽ bị xóa khỏi chiến dịch. Tệp gốc trên máy của bạn không bị ảnh hưởng.")
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirmation = false
@@ -93,7 +96,9 @@ fun MaterialDetailScreen(
             )
 
             else -> {
-                if (uiState.isPdf) {
+                if (uiState.isWord) {
+                    WordSummary(uiState.displayName, uiState.wordBlocks.size, uiState.wordCount, Modifier.fillMaxWidth())
+                } else if (uiState.isPdf) {
                     PdfSummary(
                         displayName = uiState.displayName,
                         pageCount = uiState.pageCount,
@@ -113,12 +118,20 @@ fun MaterialDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = { viewModel.extractText() },
-                    enabled = !uiState.isProcessingOcr,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (uiState.isProcessingOcr) "Đang xử lý..." else "Trích xuất văn bản")
+                if (uiState.isWord) {
+                    Text(
+                        text = "Văn bản đã được trích xuất khi nhập (không cần OCR).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Button(
+                        onClick = { viewModel.extractText() },
+                        enabled = !uiState.isProcessingOcr,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (uiState.isProcessingOcr) "Đang xử lý..." else "Trích xuất văn bản")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -153,6 +166,24 @@ fun MaterialDetailScreen(
                 if (error != null) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(text = error, color = MaterialTheme.colorScheme.error)
+                }
+
+                if (uiState.isWord && uiState.wordBlocks.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Văn bản trích xuất (${uiState.wordBlocks.size} đoạn)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    uiState.wordBlocks.forEach { block ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = block.text,
+                            style = if (block.kind == com.example.cramrescue.domain.model.TextBlockKind.HEADING) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (block.kind == com.example.cramrescue.domain.model.TextBlockKind.HEADING) FontWeight.Bold else null,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
                 }
 
                 if (uiState.hasResult) {
@@ -210,6 +241,24 @@ private fun OcrPageSection(page: OcrPageUi) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun WordSummary(displayName: String?, blockCount: Int, wordCount: Int, modifier: Modifier = Modifier) {
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp), modifier = modifier) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Tài liệu Word", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = displayName ?: "(không có tên tệp)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("$blockCount đoạn · $wordCount từ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

@@ -12,26 +12,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private class FakeCampaignRepository : CampaignRepository {
-    private val storage = mutableMapOf<Long, Campaign>()
-    private var nextId = 1L
-
-    override suspend fun createCampaign(campaign: Campaign): Long {
-        val id = nextId++
-        storage[id] = campaign.copy(id = id)
-        return id
-    }
-
-    override suspend fun getCampaignById(id: Long): Campaign? = storage[id]
-
-    override suspend fun getLatestCampaign(): Campaign? = storage.values.maxByOrNull { it.id }
-}
-
 class CreateCampaignUseCaseTest {
 
     private val fixedNow = Instant.parse("2026-09-21T00:00:00Z")
     private val clock = Clock.fixed(fixedNow, ZoneOffset.UTC)
-    private val repository = FakeCampaignRepository()
+    private val repository = InMemoryCampaignRepository()
     private val useCase = CreateCampaignUseCase(repository, clock)
 
     @Test

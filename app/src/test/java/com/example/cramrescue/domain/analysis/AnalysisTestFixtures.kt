@@ -2,6 +2,8 @@ package com.example.cramrescue.domain.analysis
 
 import com.example.cramrescue.domain.model.BoundingBox
 import com.example.cramrescue.domain.model.Campaign
+import com.example.cramrescue.domain.model.DocumentText
+import com.example.cramrescue.domain.model.DocumentTextBlock
 import com.example.cramrescue.domain.model.LOW_TEXT_CHARACTER_THRESHOLD
 import com.example.cramrescue.domain.model.OcrPageResult
 import com.example.cramrescue.domain.model.OcrResult
@@ -10,11 +12,15 @@ import com.example.cramrescue.domain.model.SourceDocument
 import com.example.cramrescue.domain.model.SourceType
 import com.example.cramrescue.domain.model.StudyAnalysis
 import com.example.cramrescue.domain.model.SubjectArchetype
+import com.example.cramrescue.domain.model.TextBlockKind
+import com.example.cramrescue.domain.repository.CampaignDeletion
 import com.example.cramrescue.domain.repository.CampaignRepository
+import com.example.cramrescue.domain.repository.DocumentTextRepository
 import com.example.cramrescue.domain.repository.GeminiCredentialRepository
 import com.example.cramrescue.domain.repository.OcrRepository
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
 import com.example.cramrescue.domain.repository.StudyAnalysisRepository
+import com.example.cramrescue.domain.word.ExtractedTextBlock
 import java.time.Instant
 
 // Test-only placeholder; not a real credential.
@@ -71,7 +77,9 @@ val LONG_TEXT = "Binary search requires a sorted input and runs in logarithmic t
 class FakeCampaignRepository(private val campaigns: List<Campaign>) : CampaignRepository {
     override suspend fun createCampaign(campaign: Campaign): Long = error("unused")
     override suspend fun getCampaignById(id: Long): Campaign? = campaigns.firstOrNull { it.id == id }
-    override suspend fun getLatestCampaign(): Campaign? = error("ownership must never be inferred from the latest campaign")
+    override suspend fun getCampaigns(): List<Campaign> = campaigns
+    override suspend fun updateCampaign(campaign: Campaign): Boolean = error("unused")
+    override suspend fun deleteCampaign(campaignId: Long): CampaignDeletion? = error("unused")
 }
 
 class FakeSourceDocumentRepository(
@@ -154,3 +162,53 @@ fun item(
     bullets: List<String> = listOf("Mảng phải được sắp xếp", "Độ phức tạp O(log n)"),
     refs: List<String> = listOf("B1")
 ) = DraftPriority(title = title, triage = triage, bullets = bullets, sourceBlockIds = refs)
+
+/** In-memory Word text store (M13); [saved] records every atomic save. */
+class FakeDocumentTextRepository(
+    val texts: MutableMap<Long, DocumentText> = mutableMapOf()
+) : DocumentTextRepository {
+    val saved = mutableListOf<Pair<SourceDocument, List<ExtractedTextBlock>>>()
+    var failSaves = false
+    private var nextId = 500L
+
+    override suspend fun saveWordDocument(
+        document: SourceDocument,
+        blocks: List<ExtractedTextBlock>,
+        extractedAt: Instant
+    ): Long {
+        if (failSaves) throw IllegalStateException("simulated database failure")
+        val id = nextId++
+        saved += document to blocks
+        texts[id] = wordText(id, blocks.map { it.text }, extractedAt, blocks.map { it.kind })
+        return id
+    }
+
+    override suspend fun getText(documentId: Long) = texts[documentId]
+}
+
+fun wordDocument(id: Long, campaignId: Long, name: String? = "notes.docx") = SourceDocument(
+    id = id,
+    campaignId = campaignId,
+    sourceType = SourceType.WORD,
+    localPath = "/doc$id.docx",
+    createdAt = NOW,
+    pageCount = 1,
+    displayName = name
+)
+
+/** Word text whose blocks get orderIndex = position, unless [orders] overrides them. */
+fun wordText(
+    documentId: Long,
+    texts: List<String>,
+    extractedAt: Instant = NOW,
+    kinds: List<TextBlockKind>? = null,
+    orders: List<Int>? = null
+) = DocumentText(
+    documentId = documentId,
+    extractedAt = extractedAt,
+    blocks = texts.mapIndexed { i, text ->
+        DocumentTextBlock(
+            documentId, orders?.get(i) ?: i, kinds?.get(i) ?: TextBlockKind.PARAGRAPH, text
+        )
+    }
+)

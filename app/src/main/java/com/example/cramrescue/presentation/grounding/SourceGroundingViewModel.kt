@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cramrescue.domain.grounding.GroundedSource
 import com.example.cramrescue.domain.grounding.GroundingResult
 import com.example.cramrescue.domain.grounding.GroundingUnavailableReason
+import com.example.cramrescue.domain.grounding.TextGroundedSource
 import com.example.cramrescue.domain.usecase.grounding.GetGroundedSourceUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,9 @@ private const val MAX_DISPLAY_DIMENSION_PX = 2048
 sealed interface SourceGroundingUiState {
     data object Loading : SourceGroundingUiState
     data class Success(val source: GroundedSource, val bitmap: Bitmap) : SourceGroundingUiState
+
+    /** Word source: cited paragraphs as a text snippet, no page image (FR-14). */
+    data class SuccessText(val source: TextGroundedSource) : SourceGroundingUiState
     data class Unavailable(val reason: GroundingUnavailableReason) : SourceGroundingUiState
     data class RenderError(val failure: SourceLoadFailure) : SourceGroundingUiState
 }
@@ -40,6 +44,7 @@ class SourceGroundingViewModel(
         viewModelScope.launch {
             _uiState.value = when (val result = getGroundedSource(campaignId, cardId, documentId, pageIndex)) {
                 is GroundingResult.Unavailable -> SourceGroundingUiState.Unavailable(result.reason)
+                is GroundingResult.AvailableText -> SourceGroundingUiState.SuccessText(result.source)
                 is GroundingResult.Available -> when (val load = loader.load(result.source, MAX_DISPLAY_DIMENSION_PX)) {
                     is SourceLoadResult.Loaded -> SourceGroundingUiState.Success(result.source, load.bitmap)
                     is SourceLoadResult.Failed -> SourceGroundingUiState.RenderError(load.failure)

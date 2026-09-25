@@ -6,6 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.cramrescue.domain.usecase.campaign.DeleteCampaignUseCase
+import com.example.cramrescue.domain.usecase.campaign.UpdateCampaignUseCase
+import com.example.cramrescue.presentation.campaign.manage.ManageCampaignScreen
+import com.example.cramrescue.presentation.campaign.manage.ManageCampaignViewModelFactory
 import androidx.navigation.navArgument
 import com.example.cramrescue.CramRescueApplication
 import com.example.cramrescue.domain.usecase.campaign.CreateCampaignUseCase
@@ -121,6 +125,31 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onStartSpeedRun = { id ->
                     navController.navigate(Screen.ActiveRecall.createRoute(id, StudyMode.SPEED_RUN))
+                },
+                onManageCampaign = { id -> navController.navigate(Screen.ManageCampaign.createRoute(id)) }
+            )
+        }
+
+        composable(
+            route = Screen.ManageCampaign.route,
+            arguments = listOf(navArgument(Screen.ManageCampaign.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.ManageCampaign.ARG_CAMPAIGN_ID) ?: 0L
+            val factory = ManageCampaignViewModelFactory(
+                campaignId,
+                application.campaignRepository,
+                UpdateCampaignUseCase(application.campaignRepository),
+                DeleteCampaignUseCase(application.campaignRepository)
+            )
+            ManageCampaignScreen(
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onCampaignDeleted = {
+                    // Clears Cockpit + Manage (and anything else of the deleted Campaign) so Back
+                    // can never reopen it; Home re-reads the list.
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -134,6 +163,7 @@ fun NavGraph(navController: NavHostController) {
                 application.materialFileStore,
                 application.sourceDocumentRepository,
                 application.pdfPageRenderer,
+                application.importWordDocumentUseCase,
                 campaignId
             )
             AddMaterialScreen(
@@ -161,6 +191,7 @@ fun NavGraph(navController: NavHostController) {
             val factory = MaterialDetailViewModelFactory(
                 application.sourceDocumentRepository,
                 application.ocrRepository,
+                application.documentTextRepository,
                 application.processDocumentOcrUseCase,
                 application.deleteSourceDocumentUseCase,
                 campaignId,

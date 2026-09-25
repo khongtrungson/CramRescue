@@ -1,6 +1,7 @@
 package com.example.cramrescue.domain.grounding
 
 import com.example.cramrescue.domain.model.BoundingBox
+import com.example.cramrescue.domain.model.DocumentTextBlock
 import com.example.cramrescue.domain.model.SourceType
 
 /** One cited OCR block, resolved by exact persisted identity. */
@@ -51,7 +52,25 @@ enum class GroundingUnavailableReason {
     BLOCKS_MISSING
 }
 
+/**
+ * Evidence for a Word source (FR-14: "hiển thị đoạn văn bản trích dẫn nguồn (Text Snippet)"): the
+ * document's paragraphs with the cited ones identified by exact identity. There is no page and no
+ * bounding box — by design, not by omission.
+ */
+data class TextGroundedSource(
+    val campaignId: Long,
+    val documentId: Long,
+    val displayName: String?,
+    /** All paragraphs in reading order, for context. */
+    val blocks: List<DocumentTextBlock>,
+    /** orderIndex of every cited paragraph that still exists. */
+    val citedOrderIndices: Set<Int>,
+    val missingBlockCount: Int,
+    val cardStale: Boolean
+)
+
 sealed interface GroundingResult {
     data class Available(val source: GroundedSource) : GroundingResult
+    data class AvailableText(val source: TextGroundedSource) : GroundingResult
     data class Unavailable(val reason: GroundingUnavailableReason) : GroundingResult
 }

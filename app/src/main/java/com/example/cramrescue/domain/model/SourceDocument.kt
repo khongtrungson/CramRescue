@@ -6,7 +6,11 @@ import java.time.Instant
 // FR-3 / Constraint 6.3 specify 20; raised to 50 by product-owner decision (2026-09-24).
 const val MAX_DOCUMENT_PAGES = 50
 
-enum class SourceType { CAMERA, GALLERY, PDF }
+/**
+ * WORD = .docx (Office Open XML). Legacy binary .doc is not supported and is rejected at import;
+ * after extraction both would be identical downstream, so one type is kept.
+ */
+enum class SourceType { CAMERA, GALLERY, PDF, WORD }
 
 /**
  * One imported study material, owned by exactly one Campaign. A camera/gallery image is a

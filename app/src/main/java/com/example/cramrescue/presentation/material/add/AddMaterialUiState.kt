@@ -10,6 +10,7 @@ data class MaterialPreviewItem(
     val pageCount: Int = 1
 ) {
     val isPdf: Boolean get() = source == SourceType.PDF
+    val isWord: Boolean get() = source == SourceType.WORD
 }
 
 data class AddMaterialUiState(

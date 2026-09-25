@@ -34,6 +34,7 @@ data class CampaignAnalysisUiState(
     val lowTextPageCount: Int = 0,
     val emptyPageCount: Int = 0,
     val documentsWithoutOcr: Int = 0,
+    val wordDocumentCount: Int = 0,
     val isAnalyzing: Boolean = false,
     val errorMessage: String? = null,
     /** The error can be fixed in the BYOK settings screen. */

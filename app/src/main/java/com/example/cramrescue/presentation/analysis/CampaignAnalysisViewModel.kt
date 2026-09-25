@@ -51,6 +51,7 @@ class CampaignAnalysisViewModel(
                     lowTextPageCount = state.source.lowTextPageCount,
                     emptyPageCount = state.source.emptyPageCount,
                     documentsWithoutOcr = state.source.documentsWithoutOcr,
+                    wordDocumentCount = state.source.wordDocumentCount,
                     result = state.analysis?.toUi(state.source, state.isStale),
                     errorNeedsSettings = if (hasCredential) false else it.errorNeedsSettings
                 )

@@ -26,6 +26,9 @@ interface SourceDocumentDao {
     @Query("DELETE FROM micro_card_source_refs WHERE documentId = :documentId")
     suspend fun deleteMicroCardSourceRefsForDocument(documentId: Long)
 
+    @Query("DELETE FROM document_text_blocks WHERE documentId = :documentId")
+    suspend fun deleteDocumentTextForDocument(documentId: Long)
+
     @Query("DELETE FROM ocr_text_blocks WHERE documentId = :documentId")
     suspend fun deleteOcrBlocksForDocument(documentId: Long)
 
@@ -49,6 +52,7 @@ interface SourceDocumentDao {
         val document = getOwnedBy(campaignId, documentId) ?: return null
         deleteAnalysisSourceRefsForDocument(documentId)
         deleteMicroCardSourceRefsForDocument(documentId)
+        deleteDocumentTextForDocument(documentId)
         deleteOcrBlocksForDocument(documentId)
         deleteOcrPagesForDocument(documentId)
         deleteOwnedBy(campaignId, documentId)

@@ -42,14 +42,15 @@ fun CockpitScreen(
     onOpenGeminiSettings: () -> Unit,
     onOpenMicroCards: (Long) -> Unit,
     onStartMission: (Long) -> Unit,
-    onStartSpeedRun: (Long) -> Unit
+    onStartSpeedRun: (Long) -> Unit,
+    onManageCampaign: (Long) -> Unit
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
 
-    // Study state is re-read on every (re)entry, e.g. returning from a mission — so Pass
-    // Probability updates without a restart, and never once per countdown tick.
-    LaunchedEffect(Unit) { viewModel.refreshStudyPlan() }
+    // Campaign and study state are re-read on every (re)entry, e.g. returning from a mission or
+    // from editing the Campaign — never once per countdown tick.
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -194,6 +195,10 @@ fun CockpitScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
 
+                        TextButton(onClick = { onManageCampaign(campaign.id) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Quản lý chiến dịch")
+                        }
+
                         TextButton(onClick = onOpenGeminiSettings, modifier = Modifier.fillMaxWidth()) {
                             Text("Cài đặt Gemini API key")
                         }
@@ -201,7 +206,7 @@ fun CockpitScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         TextButton(onClick = onBackToHome, modifier = Modifier.fillMaxWidth()) {
-                            Text("Về màn hình chính")
+                            Text("Về danh sách chiến dịch")
                         }
                     }
                 }

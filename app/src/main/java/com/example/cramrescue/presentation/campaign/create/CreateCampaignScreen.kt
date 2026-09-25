@@ -35,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cramrescue.domain.model.SubjectArchetype
-import com.example.cramrescue.domain.usecase.campaign.CampaignValidationError
+import com.example.cramrescue.presentation.campaign.toMessage
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneOffset
@@ -171,12 +171,4 @@ fun CreateCampaignScreen(
             text = { TimePicker(state = timePickerState) }
         )
     }
-}
-
-private fun CampaignValidationError.toMessage(): String = when (this) {
-    CampaignValidationError.BlankName -> "Vui lòng nhập tên môn học."
-    CampaignValidationError.MissingArchetype -> "Vui lòng chọn nhóm môn học."
-    CampaignValidationError.MissingExamDateTime -> "Vui lòng chọn ngày và giờ thi."
-    CampaignValidationError.ExamDateInPast -> "Thời điểm thi phải ở trong tương lai."
-    CampaignValidationError.ExamDateTooFar -> "Thời điểm thi không được quá 7 ngày kể từ bây giờ."
 }

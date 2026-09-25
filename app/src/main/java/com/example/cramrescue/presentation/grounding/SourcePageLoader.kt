@@ -48,6 +48,8 @@ class SourcePageLoader(private val pdfPageRenderer: PdfPageRenderer) {
             SourceType.CAMERA, SourceType.GALLERY ->
                 decodeUprightSampledBitmap(source.localPath, maxDimension)
                     ?: return@withContext SourceLoadResult.Failed(SourceLoadFailure.DECODE_FAILED)
+            // Word has no page image (FR-14: text snippet); it never reaches this image loader.
+            SourceType.WORD -> return@withContext SourceLoadResult.Failed(SourceLoadFailure.DECODE_FAILED)
         }
 
         val sourceAspect = source.sourceWidthPx.toDouble() / source.sourceHeightPx

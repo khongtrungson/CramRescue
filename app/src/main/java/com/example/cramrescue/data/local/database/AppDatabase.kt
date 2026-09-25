@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.cramrescue.data.local.dao.CampaignDao
+import com.example.cramrescue.data.local.dao.DocumentTextDao
 import com.example.cramrescue.data.local.dao.MicroCardDao
 import com.example.cramrescue.data.local.dao.MicroMissionDao
 import com.example.cramrescue.data.local.dao.OcrDao
@@ -17,6 +18,7 @@ import com.example.cramrescue.data.local.entity.AnalysisPriorityEntity
 import com.example.cramrescue.data.local.entity.AnalysisSourceRefEntity
 import com.example.cramrescue.data.local.entity.CampaignAnalysisEntity
 import com.example.cramrescue.data.local.entity.CampaignEntity
+import com.example.cramrescue.data.local.entity.DocumentTextBlockEntity
 import com.example.cramrescue.data.local.entity.MicroCardEntity
 import com.example.cramrescue.data.local.entity.MicroCardSourceRefEntity
 import com.example.cramrescue.data.local.entity.MicroMissionEntity
@@ -37,9 +39,10 @@ import com.example.cramrescue.data.local.entity.StudyAttemptEntity
         MicroCardEntity::class,
         MicroCardSourceRefEntity::class,
         StudyAttemptEntity::class,
-        MicroMissionEntity::class
+        MicroMissionEntity::class,
+        DocumentTextBlockEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -50,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun microCardDao(): MicroCardDao
     abstract fun studyAttemptDao(): StudyAttemptDao
     abstract fun microMissionDao(): MicroMissionDao
+    abstract fun documentTextDao(): DocumentTextDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -305,6 +309,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone 13: Word (.docx) text. Adds document_text_blocks only; no existing table is
+        // altered, so all M2–M12 data is untouched. Word text has no pages or bounding boxes, so
+        // it is not stored in the OCR tables (that would require inventing geometry).
+        val MIGRATION_8_9: Migration = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `document_text_blocks` (
+                        `documentId` INTEGER NOT NULL,
+                        `orderIndex` INTEGER NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `extractedAtEpochMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`documentId`, `orderIndex`),
+                        FOREIGN KEY(`documentId`) REFERENCES `source_documents`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -315,7 +340,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build().also { instance = it }
             }
     }

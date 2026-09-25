@@ -44,6 +44,12 @@ import kotlinx.coroutines.withContext
 
 private const val PDF_MIME_TYPE = "application/pdf"
 
+// .docx, plus legacy .doc so it can be selected and then clearly rejected (not silently hidden).
+private val WORD_MIME_TYPES = arrayOf(
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword"
+)
+
 @Composable
 fun AddMaterialScreen(
     viewModelFactory: AddMaterialViewModelFactory,
@@ -68,6 +74,10 @@ fun AddMaterialScreen(
     val pdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri -> viewModel.onPdfSelected(uri) }
+
+    val wordLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri -> viewModel.onWordSelected(uri) }
 
     Column(
         modifier = Modifier
@@ -132,6 +142,15 @@ fun AddMaterialScreen(
             Text("Chọn tệp PDF")
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { wordLauncher.launch(WORD_MIME_TYPES) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Chọn tệp Word (.docx)")
+        }
+
         if (uiState.isSaving) {
             Spacer(modifier = Modifier.height(16.dp))
             CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -160,6 +179,8 @@ fun AddMaterialScreen(
 
                     if (material.isPdf) {
                         PdfTile(pageCount = material.pageCount, modifier = tileModifier)
+                    } else if (material.isWord) {
+                        WordTile(modifier = tileModifier)
                     } else {
                         MaterialThumbnail(path = material.path, modifier = tileModifier)
                     }
@@ -173,6 +194,20 @@ fun AddMaterialScreen(
             Button(onClick = onBackToCockpit, modifier = Modifier.fillMaxWidth()) {
                 Text("Về Buồng lái sinh tồn")
             }
+        }
+    }
+}
+
+@Composable
+private fun WordTile(modifier: Modifier = Modifier) {
+    val shape = remember { RoundedCornerShape(8.dp) }
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant, shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("DOCX", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("văn bản", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

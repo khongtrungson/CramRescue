@@ -25,13 +25,15 @@ data class SourceGroupUi(
 /** Resolves card source refs against the current material; never shows a stale ref as valid. */
 internal class CardSourceResolver(source: AnalysisSource) {
     private val labels = source.pages.associate { it.documentId to it.documentLabel }
+    private val wordDocuments = source.pages.filter { it.isWord }.map { it.documentId }.toSet()
     private val textByRef = source.blocks.associate { it.sourceRef to it.text }
 
     fun resolved(ref: SourceRef): Boolean = ref in textByRef
 
     fun lines(refs: List<SourceRef>): List<SourceLineUi> = refs.map { ref ->
         SourceLineUi(
-            location = "${labels[ref.documentId] ?: "Tài liệu #${ref.documentId}"} · Trang ${ref.pageIndex + 1}",
+            location = "${labels[ref.documentId] ?: "Tài liệu #${ref.documentId}"} · " +
+                if (ref.documentId in wordDocuments) "đoạn ${ref.blockOrderIndex + 1}" else "Trang ${ref.pageIndex + 1}",
             snippet = textByRef[ref]
         )
     }
@@ -43,7 +45,8 @@ internal class CardSourceResolver(source: AnalysisSource) {
             SourceGroupUi(
                 documentId = documentId,
                 pageIndex = pageIndex,
-                location = "${labels[documentId] ?: "Tài liệu #$documentId"} · Trang ${pageIndex + 1}",
+                location = "${labels[documentId] ?: "Tài liệu #$documentId"} · " +
+                    if (documentId in wordDocuments) "văn bản Word" else "Trang ${pageIndex + 1}",
                 blockCount = groupRefs.size,
                 snippets = groupRefs.map { textByRef[it] }
             )
@@ -53,8 +56,10 @@ internal class CardSourceResolver(source: AnalysisSource) {
     fun summary(refs: List<SourceRef>): String {
         if (refs.isEmpty()) return "tài liệu nguồn đã bị xóa khỏi chiến dịch"
         return refs.groupBy { it.documentId }.entries.joinToString("; ") { (documentId, documentRefs) ->
+            val label = labels[documentId] ?: "Tài liệu #$documentId"
+            if (documentId in wordDocuments) return@joinToString "$label · văn bản Word (${documentRefs.size} đoạn)"
             val pages = documentRefs.map { it.pageIndex + 1 }.distinct().sorted().joinToString(", ")
-            "${labels[documentId] ?: "Tài liệu #$documentId"} · tr. $pages (${documentRefs.size} khối)"
+            "$label · tr. $pages (${documentRefs.size} khối)"
         }
     }
 }

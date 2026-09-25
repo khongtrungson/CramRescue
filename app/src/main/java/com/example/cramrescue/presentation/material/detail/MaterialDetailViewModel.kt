@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cramrescue.domain.model.OcrResult
+import com.example.cramrescue.domain.model.SourceType
+import com.example.cramrescue.domain.repository.DocumentTextRepository
 import com.example.cramrescue.domain.repository.OcrRepository
 import com.example.cramrescue.domain.repository.SourceDocumentRepository
 import com.example.cramrescue.domain.usecase.material.DeleteDocumentResult
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
 class MaterialDetailViewModel(
     private val sourceDocumentRepository: SourceDocumentRepository,
     private val ocrRepository: OcrRepository,
+    private val documentTextRepository: DocumentTextRepository,
     private val processDocumentOcrUseCase: ProcessDocumentOcrUseCase,
     private val deleteSourceDocument: DeleteSourceDocumentUseCase,
     private val campaignId: Long,
@@ -43,6 +46,14 @@ class MaterialDetailViewModel(
                     displayName = document.displayName,
                     pageCount = document.effectivePageCount
                 )
+            }
+
+            if (document.sourceType == SourceType.WORD) {
+                // Word text was extracted at import (FR-3); there is no OCR to run.
+                documentTextRepository.getText(documentId)?.let { text ->
+                    _uiState.update { it.copy(wordBlocks = text.blocks, wordCount = text.wordCount) }
+                }
+                return@launch
             }
 
             // Show a previously persisted OCR result immediately, without rerunning OCR.
@@ -124,6 +135,7 @@ class MaterialDetailViewModel(
 class MaterialDetailViewModelFactory(
     private val sourceDocumentRepository: SourceDocumentRepository,
     private val ocrRepository: OcrRepository,
+    private val documentTextRepository: DocumentTextRepository,
     private val processDocumentOcrUseCase: ProcessDocumentOcrUseCase,
     private val deleteSourceDocument: DeleteSourceDocumentUseCase,
     private val campaignId: Long,
@@ -134,6 +146,7 @@ class MaterialDetailViewModelFactory(
         return MaterialDetailViewModel(
             sourceDocumentRepository,
             ocrRepository,
+            documentTextRepository,
             processDocumentOcrUseCase,
             deleteSourceDocument,
             campaignId,

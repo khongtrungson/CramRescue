@@ -47,7 +47,8 @@ class GenerateCampaignAnalysisUseCase(
             ?: return GenerateAnalysisResult.CampaignNotFound
 
         val source = getAnalysisSource(campaignId)
-        val processedPages = source.analyzedPageCount + source.emptyPageCount
+        // OCR pages + Word text converted by the PRD's 500-words-per-page equivalence.
+        val processedPages = source.pageEquivalents
         if (processedPages > MAX_DOCUMENT_PAGES) return GenerateAnalysisResult.TooManyPages(processedPages)
         if (!source.hasUsableText) return GenerateAnalysisResult.NoUsableText
 

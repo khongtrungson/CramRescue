@@ -10,6 +10,10 @@ import com.example.cramrescue.data.repository.GeminiCredentialRepositoryImpl
 import com.example.cramrescue.data.repository.MicroCardRepositoryImpl
 import com.example.cramrescue.data.repository.MicroMissionRepositoryImpl
 import com.example.cramrescue.data.repository.CampaignRepositoryImpl
+import com.example.cramrescue.data.repository.DocumentTextRepositoryImpl
+import com.example.cramrescue.data.word.DocxTextExtractor
+import com.example.cramrescue.domain.repository.DocumentTextRepository
+import com.example.cramrescue.domain.usecase.word.ImportWordDocumentUseCase
 import com.example.cramrescue.data.repository.OcrRepositoryImpl
 import com.example.cramrescue.data.repository.SourceDocumentRepositoryImpl
 import com.example.cramrescue.data.repository.StudyAnalysisRepositoryImpl
@@ -46,7 +50,7 @@ class CramRescueApplication : Application() {
     private val database: AppDatabase by lazy { AppDatabase.getInstance(this) }
 
     val campaignRepository: CampaignRepository by lazy {
-        CampaignRepositoryImpl(database.campaignDao())
+        CampaignRepositoryImpl(database.campaignDao(), materialFileStore)
     }
 
     val sourceDocumentRepository: SourceDocumentRepository by lazy {
@@ -58,6 +62,13 @@ class CramRescueApplication : Application() {
     }
 
     val materialFileStore: MaterialFileStore by lazy { MaterialFileStore(this) }
+
+    // Milestone 13: Word (.docx) text — local extraction, no OCR, no network.
+    val documentTextRepository: DocumentTextRepository by lazy { DocumentTextRepositoryImpl(database.documentTextDao()) }
+
+    val importWordDocumentUseCase: ImportWordDocumentUseCase by lazy {
+        ImportWordDocumentUseCase(DocxTextExtractor(), documentTextRepository)
+    }
 
     val textRecognitionEngine: TextRecognitionEngine by lazy { MlKitTextRecognitionEngine(this) }
 
@@ -86,7 +97,7 @@ class CramRescueApplication : Application() {
     val studyAnalysisClient: StudyAnalysisClient by lazy { GeminiStudyAnalysisClient() }
 
     private val getAnalysisSourceUseCase: GetAnalysisSourceUseCase by lazy {
-        GetAnalysisSourceUseCase(sourceDocumentRepository, ocrRepository)
+        GetAnalysisSourceUseCase(sourceDocumentRepository, ocrRepository, documentTextRepository)
     }
 
     val generateCampaignAnalysisUseCase: GenerateCampaignAnalysisUseCase by lazy {
@@ -150,7 +161,7 @@ class CramRescueApplication : Application() {
 
     // Milestone 11: Source Grounding. Read-only: no OCR, no AI, no network, no file writes.
     val getGroundedSourceUseCase: GetGroundedSourceUseCase by lazy {
-        GetGroundedSourceUseCase(getMicroCardsUseCase, sourceDocumentRepository, ocrRepository)
+        GetGroundedSourceUseCase(getMicroCardsUseCase, sourceDocumentRepository, ocrRepository, documentTextRepository)
     }
 
     val sourcePageLoader: SourcePageLoader by lazy { SourcePageLoader(pdfPageRenderer) }
