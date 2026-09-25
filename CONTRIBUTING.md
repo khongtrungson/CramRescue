@@ -107,10 +107,12 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
 
 ## UI / Design System
 
-- **Light, neutral UI is the primary visual direction.** The default theme (`CramRescueTheme`,
-  `darkTheme = false`) is a calm, light, high-readability surface — not the older permanently-dark
-  "Emergency Cockpit" look. A dark scheme is preserved in `ui/theme/Color.kt` /`Theme.kt` for future
-  dark-mode support (`requirements.md` §5.4 calls for it eventually), but it is not the default.
+- **Light, neutral UI is the primary visual direction; dark mode follows the system.**
+  `CramRescueTheme` uses `isSystemInDarkTheme()` (M15, `requirements.md` §5.4): the calm light
+  surface on a light-mode phone, a neutral dark scheme on a dark-mode phone. Both schemes follow the
+  same rules — a neutral accent for buttons (never a triage color), `ErrorOnDark` for readable
+  error text on dark surfaces. Screens use only `MaterialTheme.colorScheme` roles, so a new screen
+  works in both modes automatically; check it in both before calling it done.
 - **Visual inspiration, not visual copying.** "Anki-like" means light backgrounds, clean surfaces,
   simple controls, and minimal visual noise — it does not mean reusing Anki's branding, icons, or
   exact layout. CramRescue keeps its own identity.
@@ -332,6 +334,15 @@ Use descriptive, domain-oriented names (`CreateCampaignUseCase`, not `CampaignMa
   (FR-13 has no resume); results are ordinary `StudyAttempt`s feeding FR-9 unchanged.
 - Known MVP semantics: a Speed-run result on a card of an unfinished Micro-mission advances that
   mission (attempts carry no provenance).
+
+## Backup / Privacy
+
+- `requirements.md` §5.3: documents, exam photos, extracted text and the key never go to any server
+  except the Gemini endpoint. Cloud Auto Backup is therefore excluded for the database, app files
+  and shared preferences (`res/xml/data_extraction_rules.xml`, `backup_rules.xml`); only a direct
+  device-to-device transfer carries study data (never the key). Keep new storage inside those
+  domains, or add it to the exclusions.
+- No logging of keys, prompts, responses, OCR/Word text or file paths in production code.
 
 ## Secrets (BYOK Gemini Key)
 

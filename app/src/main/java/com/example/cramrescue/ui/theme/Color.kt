@@ -31,10 +31,9 @@ val OnAccentPrimaryLight = Color(0xFFFFFFFF)
 val AccentContainerLight = Color(0xFFE7E7E5)
 val OnAccentContainerLight = Color(0xFF1A1A1A)
 
-// Dark palette — preserved for future dark-mode support. requirements.md
-// §5.4 calls for an eventual dark mode for late-night cramming; this is not
-// wired up as the default yet (see CramRescueTheme), but the color set is
-// kept so that milestone isn't lost.
+// Dark palette — used when the system is in dark mode (requirements.md §5.4,
+// late-night cramming; see CramRescueTheme). Same neutral rules as light:
+// the accent is a calm light tone, never a triage color.
 val AppBackgroundDark = Color(0xFF0F1419)
 val AppSurfaceDark = Color(0xFF1A1F26)
 val AppSurfaceVariantDark = Color(0xFF232A33)
@@ -43,6 +42,13 @@ val TextPrimaryDark = Color(0xFFEEEEEE)
 val TextSecondaryDark = Color(0xFF9E9E9E)
 val AccentContainerDark = Color(0xFF2A323C)
 val OnAccentContainerDark = Color(0xFFEEEEEE)
+val AccentPrimaryDark = Color(0xFFE6E6E6)
+val OnAccentPrimaryDark = Color(0xFF121212)
+
+// Error/emergency text on dark surfaces. CodeRed (#D32F2F) is too dark to read as body text on
+// AppBackgroundDark (~3.7:1); this lighter red of the same hue keeps ~6:1. Badges that draw
+// CodeRed as a filled background with OnCodeRed text are unaffected.
+val ErrorOnDark = Color(0xFFFF6B6B)
 
 // ---------------------------------------------------------------------------
 // Semantic CramRescue colors — ER Triage

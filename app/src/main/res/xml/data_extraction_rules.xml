@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-   Backup / device-transfer rules for Android 12+. The Gemini API key's ciphertext is excluded:
-   it is bound to this device's Keystore key, and a secret should never leave the device.
+   Backup / device-transfer rules for Android 12+.
+
+   requirements.md §5.3: study documents, exam photos and the API key are never sent to any server
+   other than the Gemini endpoint. Cloud backup would upload them to Google's backup servers, so
+   everything the app stores is excluded from it: the Room database (OCR text, analysis, study
+   history), app files (imported photos/PDFs/DOCX copies) and shared preferences (the key's
+   ciphertext, which is bound to this device's Keystore anyway).
+
+   A direct device-to-device transfer involves no server and keeps the study data — except the
+   key, which can't be decrypted on another device.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="gemini_credential.xml" />
+        <exclude domain="database" />
+        <exclude domain="file" />
+        <exclude domain="sharedpref" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="gemini_credential.xml" />

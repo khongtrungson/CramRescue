@@ -2,6 +2,7 @@ package com.example.cramrescue.ui.theme
 
 import android.app.Activity
 import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -37,13 +38,11 @@ private val LightColorScheme = lightColorScheme(
     onError = OnCodeRed
 )
 
-// Dark "Emergency Cockpit" scheme, preserved from the original design for
-// future dark-mode support (see requirements.md §5.4). Not the default.
+// Dark scheme (requirements.md §5.4), used when the system is in dark mode. Mirrors the light
+// scheme's rules: neutral accent for buttons/chips — triage colors stay reserved for meaning.
 private val DarkColorScheme = darkColorScheme(
-    primary = CodeRed,
-    onPrimary = OnCodeRed,
-    secondary = CodeYellow,
-    onSecondary = OnCodeYellow,
+    primary = AccentPrimaryDark,
+    onPrimary = OnAccentPrimaryDark,
     tertiary = CodeGreen,
     onTertiary = OnCodeGreen,
     background = AppBackgroundDark,
@@ -56,16 +55,15 @@ private val DarkColorScheme = darkColorScheme(
     outlineVariant = AppOutlineDark,
     secondaryContainer = AccentContainerDark,
     onSecondaryContainer = OnAccentContainerDark,
-    error = CodeRed,
-    onError = OnCodeRed
+    error = ErrorOnDark,
+    onError = OnAccentPrimaryDark
 )
 
 @Composable
 fun CramRescueTheme(
-    // Light is the primary MVP visual direction. Dark mode is preserved
-    // (see DarkColorScheme above) but is not the default while the product
-    // is still on its light, Anki-inspired study surface.
-    darkTheme: Boolean = false,
+    // M15: follows the system setting — dark for late-night study when the phone is in dark
+    // mode (requirements.md §5.4), the light Anki-inspired surface otherwise.
+    darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color disabled for a consistent CramRescue palette.
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit

@@ -77,7 +77,7 @@ fun GeminiSettingsScreen(
 
         Text(
             text = "Key được mã hóa bằng Android Keystore và chỉ gửi tới Google Gemini API. " +
-                "Khi bạn phân tích, văn bản OCR (không phải ảnh hay tệp PDF) được gửi tới Gemini.",
+                "Khi bạn phân tích, chỉ văn bản đã trích xuất (OCR từ ảnh/PDF và đoạn văn từ tệp Word) được gửi tới Gemini — không gửi ảnh hay tệp gốc.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

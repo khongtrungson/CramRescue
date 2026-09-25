@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
    Auto Backup rules for Android 11 and lower (see data_extraction_rules.xml for Android 12+).
-   The Gemini API key's ciphertext is excluded: it is bound to this device's Keystore key, and a
-   secret should never leave the device in a backup.
+   These rules can't tell cloud backup from device transfer, so — per requirements.md §5.3 — no
+   study data, imported file or key ever leaves the device through backup.
 -->
 <full-backup-content>
-    <exclude domain="sharedpref" path="gemini_credential.xml" />
+    <exclude domain="database" />
+    <exclude domain="file" />
+    <exclude domain="sharedpref" />
 </full-backup-content>

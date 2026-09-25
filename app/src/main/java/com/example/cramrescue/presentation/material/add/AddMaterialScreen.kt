@@ -112,6 +112,8 @@ fun AddMaterialScreen(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                 )
             },
+            // One import at a time: no second picker while a copy/extraction is running.
+            enabled = !uiState.isSaving,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Chọn từ thư viện")
@@ -128,6 +130,7 @@ fun AddMaterialScreen(
                     viewModel.onCameraUnavailable()
                 }
             },
+            enabled = !uiState.isSaving,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Chụp bằng camera")
@@ -137,6 +140,7 @@ fun AddMaterialScreen(
 
         OutlinedButton(
             onClick = { pdfLauncher.launch(arrayOf(PDF_MIME_TYPE)) },
+            enabled = !uiState.isSaving,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Chọn tệp PDF")
@@ -146,6 +150,7 @@ fun AddMaterialScreen(
 
         OutlinedButton(
             onClick = { wordLauncher.launch(WORD_MIME_TYPES) },
+            enabled = !uiState.isSaving,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Chọn tệp Word (.docx)")

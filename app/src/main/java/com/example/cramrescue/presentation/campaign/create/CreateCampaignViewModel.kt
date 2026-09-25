@@ -44,14 +44,16 @@ class CreateCampaignViewModel(
 
     fun createCampaign() {
         val state = _uiState.value
+        // A second tap before the button re-renders as disabled must not create a second Campaign.
+        if (state.isSaving || state.createdCampaignId != null) return
         val examDateTime = if (state.examDate != null && state.examTime != null) {
             state.examDate.atTime(state.examTime).atZone(ZoneId.systemDefault()).toInstant()
         } else {
             null
         }
 
+        _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true) }
             when (val result = createCampaignUseCase(state.name, state.selectedArchetype, examDateTime)) {
                 is CreateCampaignResult.Success -> _uiState.update {
                     it.copy(isSaving = false, errors = emptyList(), createdCampaignId = result.campaign.id)
