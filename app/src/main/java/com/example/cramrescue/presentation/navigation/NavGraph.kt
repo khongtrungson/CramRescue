@@ -67,7 +67,8 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Screen.CampaignConfirmation.createRoute(campaignId)) {
                         popUpTo(Screen.Home.route)
                     }
-                }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 

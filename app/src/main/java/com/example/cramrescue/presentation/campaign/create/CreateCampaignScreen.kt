@@ -1,5 +1,6 @@
 package com.example.cramrescue.presentation.campaign.create
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,19 +10,38 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Functions
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -32,10 +52,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cramrescue.domain.model.SubjectArchetype
 import com.example.cramrescue.presentation.campaign.toMessage
+import com.example.cramrescue.ui.theme.CodeRedContainer
+import com.example.cramrescue.ui.theme.OnCodeRedContainer
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneOffset
@@ -45,7 +68,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CreateCampaignScreen(
     viewModelFactory: CreateCampaignViewModelFactory,
-    onCampaignCreated: (Long) -> Unit
+    onCampaignCreated: (Long) -> Unit,
+    onBack: () -> Unit = {}
 ) {
     val viewModel: CreateCampaignViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -61,76 +85,237 @@ fun CreateCampaignScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "Tạo chiến dịch sinh tồn",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = uiState.name,
-            onValueChange = viewModel::onNameChange,
-            label = { Text("Tên môn học") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(text = "Nhóm môn học", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SubjectArchetype.entries.forEach { archetype ->
-                FilterChip(
-                    selected = uiState.selectedArchetype == archetype,
-                    onClick = { viewModel.onArchetypeSelected(archetype) },
-                    label = { Text(archetype.displayName) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Tạo chiến dịch sinh tồn",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
                 )
+            )
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                tonalElevation = 4.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                    Button(
+                        onClick = { viewModel.createCampaign() },
+                        enabled = !uiState.isSaving,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Text(
+                            text = if (uiState.isSaving) "Đang tạo..." else "Tạo chiến dịch",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(text = "Thời điểm thi", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { showDatePicker = true }) {
-                Text(uiState.examDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) ?: "Chọn ngày thi")
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            // Section 1: Subject Name Card
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Tên môn thi",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = uiState.name,
+                        onValueChange = viewModel::onNameChange,
+                        placeholder = { Text("Ví dụ: Giải tích 2, Kinh tế vi mô…") },
+                        label = { Text("Tên môn học") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
-            OutlinedButton(onClick = { showTimePicker = true }) {
-                Text(uiState.examTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "Chọn giờ thi")
-            }
-        }
 
-        if (uiState.errors.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            uiState.errors.forEach { error ->
-                Text(
-                    text = error.toMessage(),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+
+            // Section 2: Subject Archetype Card
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Nhóm môn học",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Giúp AI tối ưu hóa tiêu chuẩn trích xuất công thức & định nghĩa",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SubjectArchetype.entries.forEach { archetype ->
+                            val selected = uiState.selectedArchetype == archetype
+                            val icon = when (archetype) {
+                                SubjectArchetype.NATURAL_COMPUTATION -> Icons.Default.Functions
+                                SubjectArchetype.SOCIAL_THEORY -> Icons.Default.MenuBook
+                                SubjectArchetype.PROGRAMMING_TECH -> Icons.Default.Code
+                                SubjectArchetype.LANGUAGE -> Icons.Default.Translate
+                            }
+                            FilterChip(
+                                selected = selected,
+                                onClick = { viewModel.onArchetypeSelected(archetype) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                label = { Text(archetype.displayName, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = { viewModel.createCampaign() },
-            enabled = !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (uiState.isSaving) "Đang tạo..." else "Tạo chiến dịch")
+            // Section 3: Exam Target Time Card
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Thời điểm thi",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Đồng hồ sinh tồn 48h sẽ đếm ngược chính xác đến mốc này",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDatePicker = true },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = uiState.examDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) ?: "Chọn ngày thi",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { showTimePicker = true },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccessTime,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = uiState.examTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "Chọn giờ thi",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (uiState.errors.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
+                    color = CodeRedContainer,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        uiState.errors.forEach { error ->
+                            Text(
+                                text = "• " + error.toMessage(),
+                                color = OnCodeRedContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
@@ -157,7 +342,7 @@ fun CreateCampaignScreen(
 
     if (showTimePicker) {
         val timePickerState = rememberTimePickerState()
-        androidx.compose.material3.AlertDialog(
+        AlertDialog(
             onDismissRequest = { showTimePicker = false },
             confirmButton = {
                 TextButton(onClick = {
