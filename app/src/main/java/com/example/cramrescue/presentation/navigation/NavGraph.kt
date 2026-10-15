@@ -42,6 +42,8 @@ import com.example.cramrescue.presentation.quiz.QuizListScreen
 import com.example.cramrescue.presentation.quiz.QuizListViewModelFactory
 import com.example.cramrescue.presentation.quiz.QuizExamScreen
 import com.example.cramrescue.presentation.quiz.QuizExamViewModelFactory
+import com.example.cramrescue.presentation.quiz.QuizResultScreen
+import com.example.cramrescue.presentation.quiz.QuizResultViewModelFactory
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -378,6 +380,40 @@ fun NavGraph(navController: NavHostController) {
                 onExamFinished = { cId, qId, attemptId ->
                     navController.navigate(Screen.QuizResult.createRoute(cId, qId, attemptId)) {
                         popUpTo(Screen.QuizList.createRoute(cId))
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.QuizResult.route,
+            arguments = listOf(
+                navArgument(Screen.QuizResult.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.QuizResult.ARG_QUIZ_ID) { type = NavType.LongType },
+                navArgument(Screen.QuizResult.ARG_ATTEMPT_ID) { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.QuizResult.ARG_CAMPAIGN_ID) ?: 0L
+            val quizId = backStackEntry.arguments?.getLong(Screen.QuizResult.ARG_QUIZ_ID) ?: 0L
+            val attemptId = backStackEntry.arguments?.getLong(Screen.QuizResult.ARG_ATTEMPT_ID) ?: 0L
+            val factory = QuizResultViewModelFactory(
+                quizId = quizId,
+                attemptId = attemptId,
+                quizRepository = application.quizRepository
+            )
+            QuizResultScreen(
+                campaignId = campaignId,
+                quizId = quizId,
+                attemptId = attemptId,
+                viewModelFactory = factory,
+                onBackToList = {
+                    navController.navigate(Screen.QuizList.createRoute(campaignId)) {
+                        popUpTo(Screen.QuizList.createRoute(campaignId)) { inclusive = true }
+                    }
+                },
+                onRetakeQuiz = { qId ->
+                    navController.navigate(Screen.QuizExam.createRoute(campaignId, qId)) {
+                        popUpTo(Screen.QuizList.createRoute(campaignId))
                     }
                 }
             )
