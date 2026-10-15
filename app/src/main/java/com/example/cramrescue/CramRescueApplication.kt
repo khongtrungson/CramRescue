@@ -41,6 +41,13 @@ import com.example.cramrescue.domain.usecase.mission.GetMissionCardsUseCase
 import com.example.cramrescue.domain.usecase.mission.GetStudyPlanUseCase
 import com.example.cramrescue.domain.usecase.mission.StartMicroMissionUseCase
 import com.example.cramrescue.domain.usecase.ocr.ProcessDocumentOcrUseCase
+import com.example.cramrescue.data.remote.GeminiChatClientImpl
+import com.example.cramrescue.data.repository.ChatMessageRepositoryImpl
+import com.example.cramrescue.domain.chat.GeminiChatClient
+import com.example.cramrescue.domain.repository.ChatMessageRepository
+import com.example.cramrescue.domain.usecase.chat.ClearChatHistoryUseCase
+import com.example.cramrescue.domain.usecase.chat.GetChatMessagesUseCase
+import com.example.cramrescue.domain.usecase.chat.SendChatMessageUseCase
 import com.example.cramrescue.domain.usecase.recall.RecordRecallAssessmentUseCase
 import com.example.cramrescue.domain.usecase.settings.CheckStoredGeminiCredentialUseCase
 import com.example.cramrescue.domain.usecase.settings.SaveGeminiCredentialUseCase
@@ -100,8 +107,34 @@ class CramRescueApplication : Application() {
 
     val studyAnalysisClient: StudyAnalysisClient by lazy { GeminiStudyAnalysisClient() }
 
-    private val getAnalysisSourceUseCase: GetAnalysisSourceUseCase by lazy {
+    val getAnalysisSourceUseCase: GetAnalysisSourceUseCase by lazy {
         GetAnalysisSourceUseCase(sourceDocumentRepository, ocrRepository, documentTextRepository)
+    }
+
+    // Milestone: Chatbot Q&A
+    val chatMessageRepository: ChatMessageRepository by lazy {
+        ChatMessageRepositoryImpl(database.chatMessageDao())
+    }
+
+    val geminiChatClient: GeminiChatClient by lazy {
+        GeminiChatClientImpl()
+    }
+
+    val getChatMessagesUseCase: GetChatMessagesUseCase by lazy {
+        GetChatMessagesUseCase(chatMessageRepository)
+    }
+
+    val clearChatHistoryUseCase: ClearChatHistoryUseCase by lazy {
+        ClearChatHistoryUseCase(chatMessageRepository)
+    }
+
+    val sendChatMessageUseCase: SendChatMessageUseCase by lazy {
+        SendChatMessageUseCase(
+            getAnalysisSourceUseCase,
+            geminiCredentialRepository,
+            geminiChatClient,
+            chatMessageRepository
+        )
     }
 
     val generateCampaignAnalysisUseCase: GenerateCampaignAnalysisUseCase by lazy {

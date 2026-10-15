@@ -80,4 +80,9 @@ sealed class Screen(val route: String) {
         const val ARG_ATTEMPT_ID = "attemptId"
         fun createRoute(campaignId: Long, quizId: Long, attemptId: Long) = "quiz_result/$campaignId/$quizId/$attemptId"
     }
+
+    data object ChatBot : Screen("campaign/{campaignId}/chatbot") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        fun createRoute(campaignId: Long) = "campaign/$campaignId/chatbot"
+    }
 }

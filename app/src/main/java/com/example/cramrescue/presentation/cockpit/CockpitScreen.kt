@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Layers
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,7 +77,8 @@ fun CockpitScreen(
     onStartMission: (Long) -> Unit,
     onStartSpeedRun: (Long) -> Unit,
     onManageCampaign: (Long) -> Unit,
-    onOpenQuizList: (Long) -> Unit = {}
+    onOpenQuizList: (Long) -> Unit = {},
+    onOpenChatBot: (Long) -> Unit = {}
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -156,6 +159,18 @@ fun CockpitScreen(
                                     containerColor = MaterialTheme.colorScheme.background
                                 )
                             )
+                        },
+                        floatingActionButton = {
+                            FloatingActionButton(
+                                onClick = { onOpenChatBot(campaign.id) },
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                                    contentDescription = "Hỏi đáp tài liệu"
+                                )
+                            }
                         }
                     ) { paddingValues ->
                         Column(
@@ -365,6 +380,14 @@ fun CockpitScreen(
                                         .fillMaxHeight(),
                                     onClick = { onOpenAnalysis(campaign.id) }
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 ActionToolCard(
                                     title = "Thẻ ghi nhớ (Micro-Card)",
                                     icon = Icons.Default.Layers,
@@ -372,6 +395,14 @@ fun CockpitScreen(
                                         .weight(1f)
                                         .fillMaxHeight(),
                                     onClick = { onOpenMicroCards(campaign.id) }
+                                )
+                                ActionToolCard(
+                                    title = "Hỏi đáp tài liệu (Chatbot)",
+                                    icon = Icons.AutoMirrored.Filled.Chat,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    onClick = { onOpenChatBot(campaign.id) }
                                 )
                             }
 

@@ -30,6 +30,53 @@ class GetGroundedSourceUseCase(
     suspend operator fun invoke(campaignId: Long, cardId: Long, documentId: Long, pageIndex: Int): GroundingResult {
         fun unavailable(reason: GroundingUnavailableReason) = GroundingResult.Unavailable(reason)
 
+        // Support direct document page grounding (e.g. from Chatbot citation badges where cardId <= 0)
+        if (cardId <= 0L) {
+            val document = sourceDocumentRepository.getDocumentById(documentId)
+                ?: return unavailable(GroundingUnavailableReason.SOURCE_DELETED)
+            if (document.campaignId != campaignId) return unavailable(GroundingUnavailableReason.SOURCE_DELETED)
+
+            if (document.sourceType == SourceType.WORD) {
+                if (pageIndex != WORD_LOGICAL_SECTION_INDEX) return unavailable(GroundingUnavailableReason.PAGE_MISSING)
+                val text = documentTextRepository?.getText(documentId)
+                    ?: return unavailable(GroundingUnavailableReason.BLOCKS_MISSING)
+                return GroundingResult.AvailableText(
+                    TextGroundedSource(
+                        campaignId = campaignId,
+                        documentId = documentId,
+                        displayName = document.displayName,
+                        blocks = text.blocks,
+                        citedOrderIndices = text.blocks.map { it.orderIndex }.toSet(),
+                        missingBlockCount = 0,
+                        cardStale = false
+                    )
+                )
+            }
+
+            val page = ocrRepository.getResultForDocument(documentId)?.pages?.firstOrNull { it.pageIndex == pageIndex }
+                ?: return unavailable(GroundingUnavailableReason.PAGE_MISSING)
+            if (page.sourceWidthPx <= 0 || page.sourceHeightPx <= 0) {
+                return unavailable(GroundingUnavailableReason.INVALID_DIMENSIONS)
+            }
+            val resolved = page.blocks.map { GroundedBlock(it.orderIndex, it.text, it.boundingBox) }
+            return GroundingResult.Available(
+                GroundedSource(
+                    campaignId = campaignId,
+                    documentId = documentId,
+                    displayName = document.displayName,
+                    sourceType = document.sourceType,
+                    localPath = document.localPath,
+                    pageIndex = pageIndex,
+                    pageCount = document.effectivePageCount,
+                    sourceWidthPx = page.sourceWidthPx,
+                    sourceHeightPx = page.sourceHeightPx,
+                    blocks = resolved,
+                    missingBlockCount = 0,
+                    cardStale = false
+                )
+            )
+        }
+
         // 1. The card, scoped to its campaign (a card id from another campaign isn't found).
         val cards = getMicroCards(campaignId)
         val card = cards.cards.firstOrNull { it.id == cardId } ?: return unavailable(GroundingUnavailableReason.CARD_NOT_FOUND)

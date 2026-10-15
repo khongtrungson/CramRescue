@@ -197,4 +197,16 @@ class GetGroundedSourceUseCaseTest {
         documents.documents.removeAll { it.id == 10L }
         assertEquals(GroundingResult.Unavailable(GroundingUnavailableReason.SOURCE_DELETED), ground(1, multi.id, 10, 0))
     }
+
+    @Test
+    fun directDocumentGroundingWithZeroCardIdResolvesPageBlocks() = runBlocking {
+        setUp()
+        val result = ground(1, cardId = 0L, documentId = 10L, pageIndex = 0)
+        val source = available(result)
+        assertEquals(10L, source.documentId)
+        assertEquals(0, source.pageIndex)
+        assertEquals(3, source.blocks.size)
+        assertEquals("$longText A", source.blocks.first().text)
+        assertFalse(source.cardStale)
+    }
 }

@@ -36,6 +36,8 @@ import com.example.cramrescue.presentation.grounding.SourceGroundingViewModelFac
 import com.example.cramrescue.presentation.recall.ActiveRecallScreen
 import com.example.cramrescue.presentation.recall.ActiveRecallViewModelFactory
 import com.example.cramrescue.presentation.recall.StudyMode
+import com.example.cramrescue.presentation.chat.ChatBotScreen
+import com.example.cramrescue.presentation.chat.ChatBotViewModelFactory
 import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 import com.example.cramrescue.presentation.quiz.QuizListScreen
@@ -135,7 +137,8 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Screen.ActiveRecall.createRoute(id, StudyMode.SPEED_RUN))
                 },
                 onManageCampaign = { id -> navController.navigate(Screen.ManageCampaign.createRoute(id)) },
-                onOpenQuizList = { id -> navController.navigate(Screen.QuizList.createRoute(id)) }
+                onOpenQuizList = { id -> navController.navigate(Screen.QuizList.createRoute(id)) },
+                onOpenChatBot = { id -> navController.navigate(Screen.ChatBot.createRoute(id)) }
             )
         }
 
@@ -415,6 +418,30 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Screen.QuizExam.createRoute(campaignId, qId)) {
                         popUpTo(Screen.QuizList.createRoute(campaignId))
                     }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.ChatBot.route,
+            arguments = listOf(navArgument(Screen.ChatBot.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.ChatBot.ARG_CAMPAIGN_ID) ?: 0L
+            val factory = ChatBotViewModelFactory(
+                campaignId = campaignId,
+                campaignRepository = application.campaignRepository,
+                getAnalysisSource = application.getAnalysisSourceUseCase,
+                getChatMessages = application.getChatMessagesUseCase,
+                sendChatMessage = application.sendChatMessageUseCase,
+                clearChatHistory = application.clearChatHistoryUseCase
+            )
+            ChatBotScreen(
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onAddMaterial = { id -> navController.navigate(Screen.AddMaterial.createRoute(id)) },
+                onOpenGeminiSettings = { navController.navigate(Screen.GeminiSettings.route) },
+                onOpenCitation = { id, docId, pageIndex ->
+                    navController.navigate(Screen.SourceGrounding.createRoute(campaignId = id, cardId = 0L, documentId = docId, pageIndex = pageIndex))
                 }
             )
         }
