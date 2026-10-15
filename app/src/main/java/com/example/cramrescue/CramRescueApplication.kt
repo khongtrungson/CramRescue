@@ -63,6 +63,10 @@ class CramRescueApplication : Application() {
 
     val materialFileStore: MaterialFileStore by lazy { MaterialFileStore(this) }
 
+    val quizRepository: com.example.cramrescue.domain.repository.QuizRepository by lazy {
+        com.example.cramrescue.data.repository.QuizRepositoryImpl(database.quizDao())
+    }
+
     // Milestone 13: Word (.docx) text — local extraction, no OCR, no network.
     val documentTextRepository: DocumentTextRepository by lazy { DocumentTextRepositoryImpl(database.documentTextDao()) }
 

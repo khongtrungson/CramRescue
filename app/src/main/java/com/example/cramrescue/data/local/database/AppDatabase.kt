@@ -27,6 +27,11 @@ import com.example.cramrescue.data.local.entity.OcrTextBlockEntity
 import com.example.cramrescue.data.local.entity.SourceDocumentEntity
 import com.example.cramrescue.data.local.entity.StudyAttemptEntity
 
+import com.example.cramrescue.data.local.dao.QuizDao
+import com.example.cramrescue.data.local.entity.QuizAttemptEntity
+import com.example.cramrescue.data.local.entity.QuizEntity
+import com.example.cramrescue.data.local.entity.QuizQuestionEntity
+
 @Database(
     entities = [
         CampaignEntity::class,
@@ -40,9 +45,12 @@ import com.example.cramrescue.data.local.entity.StudyAttemptEntity
         MicroCardSourceRefEntity::class,
         StudyAttemptEntity::class,
         MicroMissionEntity::class,
-        DocumentTextBlockEntity::class
+        DocumentTextBlockEntity::class,
+        QuizEntity::class,
+        QuizQuestionEntity::class,
+        QuizAttemptEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -54,6 +62,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun studyAttemptDao(): StudyAttemptDao
     abstract fun microMissionDao(): MicroMissionDao
     abstract fun documentTextDao(): DocumentTextDao
+    abstract fun quizDao(): QuizDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -330,6 +339,63 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone: Survival Quiz (FR Campaign Survival Quiz). Adds quizzes, quiz_questions,
+        // and quiz_attempts owned via CASCADE foreign keys. Existing data is left untouched.
+        val MIGRATION_9_10: Migration = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `quizzes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `campaignId` INTEGER NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `questionCount` INTEGER NOT NULL,
+                        `createdAtEpochMillis` INTEGER NOT NULL,
+                        `bestScore` REAL,
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_quizzes_campaignId` ON `quizzes` (`campaignId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `quiz_questions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `quizId` INTEGER NOT NULL,
+                        `questionOrder` INTEGER NOT NULL,
+                        `stem` TEXT NOT NULL,
+                        `optionA` TEXT NOT NULL,
+                        `optionB` TEXT NOT NULL,
+                        `optionC` TEXT NOT NULL,
+                        `optionD` TEXT NOT NULL,
+                        `correctOptionIndex` INTEGER NOT NULL,
+                        `explanation` TEXT NOT NULL,
+                        `sourceBlockIdsJson` TEXT NOT NULL,
+                        FOREIGN KEY(`quizId`) REFERENCES `quizzes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_quiz_questions_quizId` ON `quiz_questions` (`quizId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `quiz_attempts` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `quizId` INTEGER NOT NULL,
+                        `attemptNumber` INTEGER NOT NULL,
+                        `score` REAL NOT NULL,
+                        `correctCount` INTEGER NOT NULL,
+                        `totalQuestions` INTEGER NOT NULL,
+                        `durationSeconds` INTEGER NOT NULL,
+                        `completedAtEpochMillis` INTEGER NOT NULL,
+                        `answersJson` TEXT NOT NULL,
+                        FOREIGN KEY(`quizId`) REFERENCES `quizzes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_quiz_attempts_quizId` ON `quiz_attempts` (`quizId`)")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -340,7 +406,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .build().also { instance = it }
             }
     }
