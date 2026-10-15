@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.cramrescue.data.local.dao.CampaignDao
+import com.example.cramrescue.data.local.dao.ChatMessageDao
 import com.example.cramrescue.data.local.dao.DocumentTextDao
 import com.example.cramrescue.data.local.dao.MicroCardDao
 import com.example.cramrescue.data.local.dao.MicroMissionDao
@@ -18,6 +19,7 @@ import com.example.cramrescue.data.local.entity.AnalysisPriorityEntity
 import com.example.cramrescue.data.local.entity.AnalysisSourceRefEntity
 import com.example.cramrescue.data.local.entity.CampaignAnalysisEntity
 import com.example.cramrescue.data.local.entity.CampaignEntity
+import com.example.cramrescue.data.local.entity.ChatMessageEntity
 import com.example.cramrescue.data.local.entity.DocumentTextBlockEntity
 import com.example.cramrescue.data.local.entity.MicroCardEntity
 import com.example.cramrescue.data.local.entity.MicroCardSourceRefEntity
@@ -40,9 +42,10 @@ import com.example.cramrescue.data.local.entity.StudyAttemptEntity
         MicroCardSourceRefEntity::class,
         StudyAttemptEntity::class,
         MicroMissionEntity::class,
-        DocumentTextBlockEntity::class
+        DocumentTextBlockEntity::class,
+        ChatMessageEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -54,6 +57,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun studyAttemptDao(): StudyAttemptDao
     abstract fun microMissionDao(): MicroMissionDao
     abstract fun documentTextDao(): DocumentTextDao
+    abstract fun chatMessageDao(): ChatMessageDao
 
     companion object {
         private const val DATABASE_NAME = "cramrescue.db"
@@ -330,6 +334,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Milestone: Chatbot Q&A. Adds chat_messages owned by campaigns via a CASCADE foreign key.
+        val MIGRATION_9_10: Migration = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `chat_messages` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `campaignId` INTEGER NOT NULL,
+                        `sender` TEXT NOT NULL,
+                        `content` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `citationsJson` TEXT,
+                        FOREIGN KEY(`campaignId`) REFERENCES `campaigns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_chat_messages_campaignId` ON `chat_messages` (`campaignId`)"
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -340,7 +366,17 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6,
+                        MIGRATION_6_7,
+                        MIGRATION_7_8,
+                        MIGRATION_8_9,
+                        MIGRATION_9_10
+                    )
                     .build().also { instance = it }
             }
     }

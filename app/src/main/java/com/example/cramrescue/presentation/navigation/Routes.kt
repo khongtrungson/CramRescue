@@ -62,4 +62,9 @@ sealed class Screen(val route: String) {
 
     // No arguments: the key is never passed through navigation.
     data object GeminiSettings : Screen("gemini_settings")
+
+    data object ChatBot : Screen("campaign/{campaignId}/chatbot") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        fun createRoute(campaignId: Long) = "campaign/$campaignId/chatbot"
+    }
 }
