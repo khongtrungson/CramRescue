@@ -140,6 +140,10 @@ class CramRescueApplication : Application() {
         )
     }
 
+    val submitQuizAttemptUseCase: com.example.cramrescue.domain.usecase.quiz.SubmitQuizAttemptUseCase by lazy {
+        com.example.cramrescue.domain.usecase.quiz.SubmitQuizAttemptUseCase(quizRepository)
+    }
+
     // Milestone 8: MicroCards, built locally from the current analysis (no AI call).
     val microCardRepository: MicroCardRepository by lazy {
         MicroCardRepositoryImpl(database.microCardDao())
