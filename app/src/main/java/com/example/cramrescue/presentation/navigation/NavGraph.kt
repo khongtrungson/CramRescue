@@ -40,6 +40,8 @@ import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 import com.example.cramrescue.presentation.quiz.QuizListScreen
 import com.example.cramrescue.presentation.quiz.QuizListViewModelFactory
+import com.example.cramrescue.presentation.quiz.QuizExamScreen
+import com.example.cramrescue.presentation.quiz.QuizExamViewModelFactory
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -350,6 +352,33 @@ fun NavGraph(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onStartExam = { quizId ->
                     navController.navigate(Screen.QuizExam.createRoute(campaignId, quizId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.QuizExam.route,
+            arguments = listOf(
+                navArgument(Screen.QuizExam.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.QuizExam.ARG_QUIZ_ID) { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.QuizExam.ARG_CAMPAIGN_ID) ?: 0L
+            val quizId = backStackEntry.arguments?.getLong(Screen.QuizExam.ARG_QUIZ_ID) ?: 0L
+            val factory = QuizExamViewModelFactory(
+                quizId = quizId,
+                quizRepository = application.quizRepository,
+                submitQuizAttempt = application.submitQuizAttemptUseCase
+            )
+            QuizExamScreen(
+                campaignId = campaignId,
+                quizId = quizId,
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onExamFinished = { cId, qId, attemptId ->
+                    navController.navigate(Screen.QuizResult.createRoute(cId, qId, attemptId)) {
+                        popUpTo(Screen.QuizList.createRoute(cId))
+                    }
                 }
             )
         }
