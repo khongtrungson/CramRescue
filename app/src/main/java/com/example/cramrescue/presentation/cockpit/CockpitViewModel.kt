@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+import com.example.cramrescue.domain.repository.QuizRepository
+
 private val TICK_INTERVAL_MILLIS = 1000L
 
 class CockpitViewModel(
@@ -25,6 +27,7 @@ class CockpitViewModel(
     private val campaignId: Long,
     private val getStudyPlan: GetStudyPlanUseCase,
     private val startMicroMission: StartMicroMissionUseCase,
+    private val quizRepository: QuizRepository? = null,
     private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
@@ -63,6 +66,15 @@ class CockpitViewModel(
             _uiState.update { it.copy(isLoading = false, campaign = campaign, countdown = countdown, campaignNotFound = false) }
             val plan = getStudyPlan(campaignId)
             _uiState.update { it.copy(studyPlan = plan) }
+
+            if (quizRepository != null) {
+                val quizzes = quizRepository.getQuizzesByCampaign(campaignId)
+                val best = quizzes.mapNotNull { it.bestScore }.maxOrNull()
+                val latest = quizzes.firstOrNull()?.bestScore
+                _uiState.update {
+                    it.copy(quizSummary = CampaignQuizSummary(quizCount = quizzes.size, bestScore = best, latestScore = latest))
+                }
+            }
         }
     }
 
@@ -88,10 +100,11 @@ class CockpitViewModelFactory(
     private val campaignRepository: CampaignRepository,
     private val campaignId: Long,
     private val getStudyPlan: GetStudyPlanUseCase,
-    private val startMicroMission: StartMicroMissionUseCase
+    private val startMicroMission: StartMicroMissionUseCase,
+    private val quizRepository: QuizRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return CockpitViewModel(campaignRepository, campaignId, getStudyPlan, startMicroMission) as T
+        return CockpitViewModel(campaignRepository, campaignId, getStudyPlan, startMicroMission, quizRepository) as T
     }
 }

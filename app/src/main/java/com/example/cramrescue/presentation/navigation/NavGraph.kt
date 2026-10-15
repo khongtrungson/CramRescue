@@ -38,6 +38,8 @@ import com.example.cramrescue.presentation.recall.ActiveRecallViewModelFactory
 import com.example.cramrescue.presentation.recall.StudyMode
 import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
+import com.example.cramrescue.presentation.quiz.QuizListScreen
+import com.example.cramrescue.presentation.quiz.QuizListViewModelFactory
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -102,7 +104,8 @@ fun NavGraph(navController: NavHostController) {
                 application.campaignRepository,
                 campaignId,
                 application.getStudyPlanUseCase,
-                application.startMicroMissionUseCase
+                application.startMicroMissionUseCase,
+                application.quizRepository
             )
             CockpitScreen(
                 viewModelFactory = factory,
@@ -127,7 +130,8 @@ fun NavGraph(navController: NavHostController) {
                 onStartSpeedRun = { id ->
                     navController.navigate(Screen.ActiveRecall.createRoute(id, StudyMode.SPEED_RUN))
                 },
-                onManageCampaign = { id -> navController.navigate(Screen.ManageCampaign.createRoute(id)) }
+                onManageCampaign = { id -> navController.navigate(Screen.ManageCampaign.createRoute(id)) },
+                onOpenQuizList = { id -> navController.navigate(Screen.QuizList.createRoute(id)) }
             )
         }
 
@@ -327,6 +331,26 @@ fun NavGraph(navController: NavHostController) {
             GeminiSettingsScreen(
                 viewModelFactory = factory,
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.QuizList.route,
+            arguments = listOf(navArgument(Screen.QuizList.ARG_CAMPAIGN_ID) { type = NavType.LongType })
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.QuizList.ARG_CAMPAIGN_ID) ?: 0L
+            val factory = QuizListViewModelFactory(
+                campaignId = campaignId,
+                quizRepository = application.quizRepository,
+                generateQuizUseCase = application.generateQuizUseCase
+            )
+            QuizListScreen(
+                campaignId = campaignId,
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() },
+                onStartExam = { quizId ->
+                    navController.navigate(Screen.QuizExam.createRoute(campaignId, quizId))
+                }
             )
         }
     }

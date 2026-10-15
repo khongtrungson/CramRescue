@@ -62,4 +62,22 @@ sealed class Screen(val route: String) {
 
     // No arguments: the key is never passed through navigation.
     data object GeminiSettings : Screen("gemini_settings")
+
+    data object QuizList : Screen("quiz_list/{campaignId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        fun createRoute(campaignId: Long) = "quiz_list/$campaignId"
+    }
+
+    data object QuizExam : Screen("quiz_exam/{campaignId}/{quizId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        const val ARG_QUIZ_ID = "quizId"
+        fun createRoute(campaignId: Long, quizId: Long) = "quiz_exam/$campaignId/$quizId"
+    }
+
+    data object QuizResult : Screen("quiz_result/{campaignId}/{quizId}/{attemptId}") {
+        const val ARG_CAMPAIGN_ID = "campaignId"
+        const val ARG_QUIZ_ID = "quizId"
+        const val ARG_ATTEMPT_ID = "attemptId"
+        fun createRoute(campaignId: Long, quizId: Long, attemptId: Long) = "quiz_result/$campaignId/$quizId/$attemptId"
+    }
 }
