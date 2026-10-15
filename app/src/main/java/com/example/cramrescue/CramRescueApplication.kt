@@ -126,6 +126,20 @@ class CramRescueApplication : Application() {
         CheckStoredGeminiCredentialUseCase(geminiCredentialRepository, studyAnalysisClient)
     }
 
+    val geminiQuizClient: com.example.cramrescue.domain.quiz.QuizClient by lazy {
+        com.example.cramrescue.data.remote.GeminiQuizClient()
+    }
+
+    val generateQuizUseCase: com.example.cramrescue.domain.usecase.quiz.GenerateQuizUseCase by lazy {
+        com.example.cramrescue.domain.usecase.quiz.GenerateQuizUseCase(
+            campaignRepository,
+            { campaignId -> getAnalysisSourceUseCase(campaignId) },
+            geminiCredentialRepository,
+            geminiQuizClient,
+            quizRepository
+        )
+    }
+
     // Milestone 8: MicroCards, built locally from the current analysis (no AI call).
     val microCardRepository: MicroCardRepository by lazy {
         MicroCardRepositoryImpl(database.microCardDao())
