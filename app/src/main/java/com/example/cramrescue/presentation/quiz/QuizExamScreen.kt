@@ -1,6 +1,7 @@
 package com.example.cramrescue.presentation.quiz
 
 import androidx.activity.compose.BackHandler
+import com.example.cramrescue.domain.quiz.QuizSessionEngine
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -404,8 +405,5 @@ fun QuizExamScreen(
     }
 }
 
-private fun formatSecondsToMMSS(seconds: Long): String {
-    val m = (seconds.coerceAtLeast(0)) / 60
-    val s = (seconds.coerceAtLeast(0)) % 60
-    return "%02d:%02d".format(m, s)
-}
+private fun formatSecondsToMMSS(seconds: Long): String =
+    QuizSessionEngine.formatDurationMMSS(seconds)

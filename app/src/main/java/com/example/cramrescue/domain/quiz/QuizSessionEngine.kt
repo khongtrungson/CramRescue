@@ -42,4 +42,10 @@ object QuizSessionEngine {
             )
         }
     }
+
+    fun formatDurationMMSS(seconds: Long): String {
+        val m = (seconds.coerceAtLeast(0)) / 60
+        val s = (seconds.coerceAtLeast(0)) % 60
+        return "%02d:%02d".format(m, s)
+    }
 }

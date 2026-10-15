@@ -155,4 +155,42 @@ class QuizExamViewModelTest {
         assertEquals(2, repo.lastAttemptSaved?.correctCount)
         assertEquals(10.0f, repo.lastAttemptSaved?.score)
     }
+
+    @Test
+    fun retakeSubmissionPreservesCorrectAnswerGradingRegardlessOfShuffling() = runBlocking {
+        // Original: Q1 correct is index 1 ("Option_B"), Q2 correct is index 2 ("Option_C")
+        val quiz = Quiz(1L, 10L, "Dược lý 1", 2, Instant.now(), null)
+        val questions = listOf(
+            QuizQuestion(101L, 1L, 1, "Q1", listOf("Option_A", "Option_B", "Option_C", "Option_D"), 1, "Exp 1", listOf("B1")),
+            QuizQuestion(102L, 1L, 2, "Q2", listOf("Option_A", "Option_B", "Option_C", "Option_D"), 2, "Exp 2", listOf("B2"))
+        )
+        val repo = FakeQuizRepository(quiz, questions)
+        val submitUseCase = SubmitQuizAttemptUseCase(repo)
+
+        // isRetake = true -> questions and options will be shuffled
+        val viewModel = QuizExamViewModel(
+            quizId = 1L,
+            quizRepository = repo,
+            submitQuizAttempt = submitUseCase,
+            isRetake = true,
+            dispatcher = Dispatchers.Unconfined,
+            startTicker = false
+        )
+
+        val displayedQuestions = viewModel.uiState.value.questions
+        assertEquals(2, displayedQuestions.size)
+
+        // For each displayed question, deliberately select the CORRECT option from displayed options
+        displayedQuestions.forEach { displayedQ ->
+            val correctIndexInDisplayed = displayedQ.correctOptionIndex
+            viewModel.selectOption(displayedQ.id, correctIndexInDisplayed)
+        }
+
+        viewModel.submitExam {}
+
+        assertNotNull(repo.lastAttemptSaved)
+        // Even with random shuffling of questions and options, both answers should be graded as correct!
+        assertEquals(2, repo.lastAttemptSaved?.correctCount)
+        assertEquals(10.0f, repo.lastAttemptSaved?.score)
+    }
 }

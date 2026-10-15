@@ -52,6 +52,7 @@ class QuizExamViewModel(
     val uiState: StateFlow<QuizExamUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
+    private var originalQuestions: List<QuizQuestion> = emptyList()
 
     init {
         loadExam()
@@ -65,6 +66,7 @@ class QuizExamViewModel(
                 return@launch
             }
 
+            originalQuestions = detail.questions
             val questions = if (isRetake || detail.attempts.isNotEmpty()) {
                 QuizSessionEngine.shuffleForRetake(detail.questions)
             } else {
@@ -154,9 +156,22 @@ class QuizExamViewModel(
         viewModelScope.launch(dispatcher) {
             val currentState = _uiState.value
             val timeSpent = (currentState.totalSeconds - currentState.remainingSeconds).coerceAtLeast(1)
+            val originalQuestionsMap = originalQuestions.associateBy { it.id }
+            val originalAnswers = currentState.questions.associate { q ->
+                val displayedIndex = currentState.selectedAnswers[q.id]
+                val origQuestion = originalQuestionsMap[q.id]
+                val origIndex = if (displayedIndex != null && origQuestion != null) {
+                    val chosenText = q.options.getOrNull(displayedIndex)
+                    if (chosenText != null) {
+                        origQuestion.options.indexOf(chosenText).takeIf { it >= 0 }
+                    } else null
+                } else null
+                q.id to origIndex
+            }
+
             val result = submitQuizAttempt(
                 quizId = quizId,
-                userAnswers = currentState.selectedAnswers,
+                userAnswers = originalAnswers,
                 durationSeconds = timeSpent
             )
             when (result) {

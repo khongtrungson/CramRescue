@@ -1,5 +1,6 @@
 package com.example.cramrescue.presentation.quiz
 
+import com.example.cramrescue.domain.quiz.QuizSessionEngine
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,9 +22,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
@@ -224,7 +225,7 @@ fun QuizResultScreen(
     uiState.activeGrounding?.let { grounding ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissGrounding() },
-            icon = { Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text("Đối chiếu nguồn tài liệu gốc") },
             text = {
                 Column {
@@ -336,7 +337,7 @@ private fun QuestionReviewCard(
                         Icon(
                             imageVector = if (item.isCorrect) Icons.Default.Check else Icons.Default.Close,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -350,7 +351,7 @@ private fun QuestionReviewCard(
                 }
 
                 TextButton(onClick = onShowGrounding) {
-                    Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Đối chiếu nguồn", style = MaterialTheme.typography.labelSmall)
                 }
@@ -440,8 +441,5 @@ private fun QuestionReviewCard(
     }
 }
 
-private fun formatSecondsToMMSS(seconds: Long): String {
-    val m = (seconds.coerceAtLeast(0)) / 60
-    val s = (seconds.coerceAtLeast(0)) % 60
-    return "%02d:%02d".format(m, s)
-}
+private fun formatSecondsToMMSS(seconds: Long): String =
+    QuizSessionEngine.formatDurationMMSS(seconds)

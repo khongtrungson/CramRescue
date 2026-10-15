@@ -314,7 +314,7 @@ fun CockpitScreen(
                                             val summary = uiState.quizSummary
                                             val subtitle = when {
                                                 summary == null || summary.quizCount == 0 -> "Chưa có đề thi nào · Luyện thi 4 đáp án"
-                                                summary.bestScore != null -> "Điểm cao nhất: ${summary.bestScore}/10 (${summary.quizCount} đề)"
+                                                summary.bestScore != null -> "Cao nhất: ${summary.bestScore}/10 · Gần nhất: ${summary.latestScore ?: summary.bestScore}/10 (${summary.quizCount} đề)"
                                                 else -> "${summary.quizCount} bộ đề đã tạo · Chưa thi"
                                             }
                                             Text(
