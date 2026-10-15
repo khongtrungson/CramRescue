@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.UploadFile
@@ -73,7 +74,8 @@ fun CockpitScreen(
     onOpenMicroCards: (Long) -> Unit,
     onStartMission: (Long) -> Unit,
     onStartSpeedRun: (Long) -> Unit,
-    onManageCampaign: (Long) -> Unit
+    onManageCampaign: (Long) -> Unit,
+    onOpenQuizList: (Long) -> Unit = {}
 ) {
     val viewModel: CockpitViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -263,6 +265,69 @@ fun CockpitScreen(
                                     missionMessage = uiState.missionMessage,
                                     onStartMission = { viewModel.startMission { onStartMission(campaign.id) } }
                                 )
+                            }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            // Survival Quiz Section Card (FR Campaign Survival Quiz)
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onOpenQuizList(campaign.id) }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Quiz,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(14.dp))
+                                        Column {
+                                            Text(
+                                                text = "Bài kiểm tra trắc nghiệm",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            val summary = uiState.quizSummary
+                                            val subtitle = when {
+                                                summary == null || summary.quizCount == 0 -> "Chưa có đề thi nào · Luyện thi 4 đáp án"
+                                                summary.bestScore != null -> "Điểm cao nhất: ${summary.bestScore}/10 (${summary.quizCount} đề)"
+                                                else -> "${summary.quizCount} bộ đề đã tạo · Chưa thi"
+                                            }
+                                            Text(
+                                                text = subtitle,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    TextButton(onClick = { onOpenQuizList(campaign.id) }) {
+                                        Text("Vào thi →", fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(24.dp))
