@@ -2,6 +2,7 @@ package com.example.cramrescue.presentation.cockpit
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,9 +36,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cramrescue.R
 import com.example.cramrescue.domain.mission.MissionFocus
 import com.example.cramrescue.domain.speedrun.SpeedRunPolicy
 import com.example.cramrescue.domain.speedrun.SpeedRunWindow
@@ -116,11 +120,11 @@ private fun Readiness(readiness: ReadinessState) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Shield,
+            Image(
+                painter = painterResource(id = R.drawable.protect),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(18.dp),
+                contentScale = ContentScale.Fit
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
@@ -145,11 +149,11 @@ private fun Readiness(readiness: ReadinessState) {
                     modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
+                    Image(
+                        painter = painterResource(id = R.drawable.exclamation_mark),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp),
+                        contentScale = ContentScale.Fit
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(

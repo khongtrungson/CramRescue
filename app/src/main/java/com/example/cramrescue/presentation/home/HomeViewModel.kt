@@ -74,7 +74,7 @@ class HomeViewModel(
             id = campaign.id,
             name = campaign.name,
             archetype = campaign.subjectArchetype.displayName,
-            examLabel = "Thi: ${examFormat.format(campaign.examDateTime)}",
+            examLabel = "Ngày thi: ${examFormat.format(campaign.examDateTime)}",
             remainingLabel = if (countdown.isExamReached) "Đã đến giờ thi" else "Còn ${remaining(countdown.remaining)}",
             status = when {
                 countdown.isExamReached -> CampaignRowStatus.EXAM_REACHED

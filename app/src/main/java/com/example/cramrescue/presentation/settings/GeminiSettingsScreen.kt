@@ -1,6 +1,12 @@
 package com.example.cramrescue.presentation.settings
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +35,19 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.cramrescue.R
 import com.example.cramrescue.presentation.analysis.AI_STUDIO_KEY_URL
 
 @Composable
@@ -48,39 +67,66 @@ fun GeminiSettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .background(color = MaterialTheme.colorScheme.surface)
             .padding(24.dp)
     ) {
-        TextButton(onClick = onBack) { Text("← Quay lại") }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Gemini API key (BYOK)",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        TextButton(
+            onClick = onBack,
+            contentPadding = PaddingValues(top = 36.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Về màn hình trước"
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Gemini API key",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(16.dp),
+                )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = when (uiState.isConfigured) {
+                        null -> "Đang kiểm tra…"
+                        true -> "Trạng thái: Đã cấu hình"
+                        false -> "Trạng thái: Chưa cấu hình"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
 
-        Text(
-            text = when (uiState.isConfigured) {
-                null -> "Đang kiểm tra…"
-                true -> "Trạng thái: Đã cấu hình"
-                false -> "Trạng thái: Chưa cấu hình"
-            },
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+                Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Key được mã hóa bằng Android Keystore và chỉ gửi tới Google Gemini API. " +
-                "Khi bạn phân tích, chỉ văn bản đã trích xuất (OCR từ ảnh/PDF và đoạn văn từ tệp Word) được gửi tới Gemini — không gửi ảnh hay tệp gốc.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                Text(
+                    text = "Key được mã hóa bằng Android Keystore và chỉ gửi tới Google Gemini API. " +
+                            "Khi bạn phân tích, chỉ văn bản đã trích xuất (OCR từ ảnh/PDF và đoạn văn từ tệp Word) được gửi tới Gemini — không gửi ảnh hay tệp gốc.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -132,21 +178,33 @@ fun GeminiSettingsScreen(
         val message = uiState.message
         if (message != null) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = message,
-                color = if (uiState.messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
-            )
+            Row(
+                modifier = Modifier.padding(0.dp),
+                //verticalAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.exclamation_mark3),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = message,
+                    color = if (uiState.messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Chưa có key? Tạo key miễn phí trong Google AI Studio (key mới được tạo là auth key).",
+            text = "Chưa có key? Tạo key miễn phí trong Google AI Studio.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         TextButton(onClick = { uriHandler.openUri(AI_STUDIO_KEY_URL) }) {
-            Text("Mở Google AI Studio")
+            Text("Mở Google AI Studio", color = Color.Blue)
         }
     }
 }

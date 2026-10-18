@@ -8,8 +8,7 @@ const val AI_STUDIO_KEY_URL = "https://aistudio.google.com/apikey"
 /** User-facing text for each failure category. Never includes HTTP internals or the key. */
 fun RemoteFailure.userMessage(): String = when (this) {
     RemoteFailure.InvalidCredential ->
-        "Gemini từ chối API key (sai, hết hạn, bị giới hạn, hoặc là key tiêu chuẩn cũ không còn được chấp nhận). " +
-            "Hãy tạo key mới trong Google AI Studio."
+        "Gemini từ chối API key. " + "Hãy tạo key mới trong Google AI Studio."
     is RemoteFailure.RateLimited ->
         "Gemini đang giới hạn tần suất (429)." +
             (retryAfterSeconds?.let { " Thử lại sau khoảng $it giây." } ?: " Đợi một lát rồi thử lại.")

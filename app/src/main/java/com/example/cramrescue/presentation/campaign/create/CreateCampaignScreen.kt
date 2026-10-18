@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +31,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,11 +54,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cramrescue.domain.model.SubjectArchetype
 import com.example.cramrescue.presentation.campaign.toMessage
+import com.example.cramrescue.presentation.coloredGlowShadow
 import com.example.cramrescue.ui.theme.CodeRedContainer
 import com.example.cramrescue.ui.theme.OnCodeRedContainer
 import java.time.Instant
@@ -104,15 +109,15 @@ fun CreateCampaignScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = Color.Transparent,
                 )
             )
         },
         bottomBar = {
             Surface(
-                color = MaterialTheme.colorScheme.background,
+                color = Color.Transparent,
                 tonalElevation = 4.dp,
-                shadowElevation = 8.dp,
+                //shadowElevation = 16.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
@@ -146,7 +151,13 @@ fun CreateCampaignScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        //spotColor = Color.Black.copy(alpha = 25f) // (Tùy chọn) chỉnh màu bóng
+                    )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -182,7 +193,13 @@ fun CreateCampaignScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        //spotColor = Color.Black.copy(alpha = 25f) // (Tùy chọn) chỉnh màu bóng
+                    )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -210,9 +227,26 @@ fun CreateCampaignScreen(
                                 SubjectArchetype.PROGRAMMING_TECH -> Icons.Default.Code
                                 SubjectArchetype.LANGUAGE -> Icons.Default.Translate
                             }
+
+                            val backgroundColor = if (selected) Color(0xFFFAFEEB) else Color.Transparent
+                            val borderColor = if (selected) Color(0xFFC0CA33) else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            val contentColor = if (selected) Color(0xFF558B2F) else MaterialTheme.colorScheme.onSurface
+
                             FilterChip(
                                 selected = selected,
                                 onClick = { viewModel.onArchetypeSelected(archetype) },
+                                modifier = Modifier
+                                    // Nếu được chọn thì thêm hiệu ứng tỏa sáng mờ (Glow effect)
+                                    .then(
+                                        if (selected) {
+                                            Modifier.coloredGlowShadow(
+                                                color = Color(0xFFD4E157),
+                                                alpha = 0.5f,
+                                                borderRadius = 10.dp,
+                                                blurRadius = 10.dp
+                                            )
+                                        } else Modifier
+                                    ),
                                 leadingIcon = {
                                     Icon(
                                         imageVector = icon,
@@ -220,8 +254,28 @@ fun CreateCampaignScreen(
                                         modifier = Modifier.size(16.dp)
                                     )
                                 },
-                                label = { Text(archetype.displayName, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
-                                shape = RoundedCornerShape(10.dp)
+                                label = {
+                                    Text(
+                                        text = archetype.displayName,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        color = contentColor
+                                    )
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = backgroundColor,
+                                    selectedContainerColor = backgroundColor,
+                                    labelColor = contentColor,
+                                    selectedLabelColor = contentColor,
+                                    iconColor = contentColor,
+                                    selectedLeadingIconColor = contentColor
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selected,
+                                    borderColor = borderColor,
+                                    selectedBorderColor = borderColor
+                            )
                             )
                         }
                     }
@@ -235,7 +289,13 @@ fun CreateCampaignScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        //spotColor = Color.Black.copy(alpha = 10f) // (Tùy chọn) chỉnh màu bóng
+                    )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -246,7 +306,7 @@ fun CreateCampaignScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Đồng hồ sinh tồn 48h sẽ đếm ngược chính xác đến mốc này",
+                        text = "Đồng hồ sinh tồn 48h sẽ đếm ngược chính xác đến mốc thời gian này.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -258,6 +318,7 @@ fun CreateCampaignScreen(
                         OutlinedButton(
                             onClick = { showDatePicker = true },
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)

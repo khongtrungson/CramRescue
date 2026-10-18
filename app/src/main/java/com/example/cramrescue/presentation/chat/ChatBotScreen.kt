@@ -1,6 +1,7 @@
 package com.example.cramrescue.presentation.chat
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,12 +61,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cramrescue.R
 import com.example.cramrescue.domain.model.ChatCitation
 import com.example.cramrescue.domain.model.ChatMessage
 import com.example.cramrescue.domain.model.ChatSender
@@ -130,11 +135,23 @@ fun ChatBotScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(
-                            text = "Trợ lý hỏi đáp tài liệu",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            //modifier = Modifier.weight(1f)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.chat_ai),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Trợ lý AI",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         uiState.campaign?.let { campaign ->
                             Text(
                                 text = "${campaign.name} · ${campaign.subjectArchetype.displayName}",
@@ -573,7 +590,7 @@ private fun ChatInputBar(
                 onValueChange = onTextChanged,
                 placeholder = {
                     Text(
-                        text = "Hỏi về nội dung đề cương môn học...",
+                        text = "Hỏi trợ lý AI...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -602,7 +619,7 @@ private fun ChatInputBar(
                     .size(44.dp)
                     .clip(CircleShape)
                     .background(
-                        if (!isStreaming && text.isNotBlank()) MaterialTheme.colorScheme.primary
+                        if (!isStreaming && text.isNotBlank()) Color(0xFF0084FF).copy(alpha = 1f)
                         else MaterialTheme.colorScheme.surfaceVariant
                     )
             ) {

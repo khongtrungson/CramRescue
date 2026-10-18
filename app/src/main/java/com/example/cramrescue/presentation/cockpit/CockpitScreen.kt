@@ -1,6 +1,13 @@
 package com.example.cramrescue.presentation.cockpit
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,12 +16,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +45,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,16 +62,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.paint
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cramrescue.R
 import com.example.cramrescue.domain.model.CampaignCountdown
 import com.example.cramrescue.domain.speedrun.SpeedRunPolicy
 import com.example.cramrescue.ui.theme.CodeRed
+import java.nio.file.Files.copy
 import java.time.Duration
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -88,6 +107,12 @@ fun CockpitScreen(
     LaunchedEffect(Unit) { viewModel.refresh() }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.bg),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
         when {
             uiState.isLoading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -117,18 +142,21 @@ fun CockpitScreen(
                 val campaign = uiState.campaign
                 if (campaign != null) {
                     Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = MaterialTheme.colorScheme.background,
                         topBar = {
                             TopAppBar(
+                                modifier = Modifier.statusBarsPadding(),
                                 title = {
                                     Column {
                                         Text(
                                             text = "Buồng lái sinh tồn",
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.titleLarge,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = campaign.name,
-                                            style = MaterialTheme.typography.bodySmall,
+                                            style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -156,28 +184,21 @@ fun CockpitScreen(
                                     }
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.background
+                                    containerColor = Color.Transparent
                                 )
                             )
                         },
                         floatingActionButton = {
-                            FloatingActionButton(
-                                onClick = { onOpenChatBot(campaign.id) },
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Chat,
-                                    contentDescription = "Hỏi đáp tài liệu"
-                                )
-                            }
+                            PulsingChatButton(
+                                onClick = { onOpenChatBot(campaign.id)}
+                            )
                         }
                     ) { paddingValues ->
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
                                 .padding(paddingValues)
+                                .verticalScroll(rememberScrollState())
                                 .padding(horizontal = 20.dp, vertical = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
@@ -191,7 +212,7 @@ fun CockpitScreen(
 
                             // Tactical Countdown HUD Card
                             Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = Color.Transparent,
                                 shape = RoundedCornerShape(18.dp),
                                 border = BorderStroke(
                                     1.dp,
@@ -235,7 +256,7 @@ fun CockpitScreen(
                                     if (isEmergency) {
                                         Spacer(modifier = Modifier.height(10.dp))
                                         Surface(
-                                            color = MaterialTheme.colorScheme.error,
+                                            color = Color.Transparent,
                                             contentColor = MaterialTheme.colorScheme.onError,
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
@@ -261,7 +282,7 @@ fun CockpitScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     Text(
-                                        text = "Thi: " + DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                                        text = "Ngày thi: " + DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
                                             .format(campaign.examDateTime.atZone(ZoneId.systemDefault())),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -286,7 +307,7 @@ fun CockpitScreen(
 
                             // Survival Quiz Section Card (FR Campaign Survival Quiz)
                             Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = Color.Transparent,
                                 shape = RoundedCornerShape(14.dp),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                                 modifier = Modifier
@@ -304,32 +325,25 @@ fun CockpitScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Quiz,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
+                                        Image(
+                                            painter = painterResource(id = R.drawable.exam),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(32.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
+
                                         Spacer(modifier = Modifier.width(14.dp))
                                         Column {
                                             Text(
                                                 text = "Bài kiểm tra trắc nghiệm",
-                                                style = MaterialTheme.typography.titleSmall,
+                                                style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                             val summary = uiState.quizSummary
                                             val subtitle = when {
                                                 summary == null || summary.quizCount == 0 -> "Chưa có đề thi nào · Luyện thi 4 đáp án"
-                                                summary.bestScore != null -> "Cao nhất: ${summary.bestScore}/10 · Gần nhất: ${summary.latestScore ?: summary.bestScore}/10 (${summary.quizCount} đề)"
+                                                summary.bestScore != null -> "Cao nhất: ${summary.bestScore}/10 \nGần nhất: ${summary.latestScore ?: summary.bestScore}/10 (${summary.quizCount} đề)"
                                                 else -> "${summary.quizCount} bộ đề đã tạo · Chưa thi"
                                             }
                                             Text(
@@ -345,14 +359,12 @@ fun CockpitScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(24.dp))
-
                             // Quick Action Tools Grid
                             Text(
                                 text = "CÔNG CỤ SINH TỒN",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = Color.Transparent,
                                 modifier = Modifier
                                     .align(Alignment.Start)
                                     .padding(start = 4.dp, bottom = 10.dp)
@@ -362,7 +374,7 @@ fun CockpitScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(IntrinsicSize.Min),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 ActionToolCard(
                                     title = "Thêm tài liệu",
@@ -373,11 +385,12 @@ fun CockpitScreen(
                                     onClick = { onAddMaterials(campaign.id) }
                                 )
                                 ActionToolCard(
-                                    title = "Phân tích AI (Pareto 80/20)",
+                                    title = "Phân tích AI",
                                     icon = Icons.Default.AutoAwesome,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .fillMaxHeight(),
+                                        .fillMaxHeight()
+                                        .padding(top = 0.dp),
                                     onClick = { onOpenAnalysis(campaign.id) }
                                 )
                             }
@@ -389,7 +402,7 @@ fun CockpitScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 ActionToolCard(
-                                    title = "Thẻ ghi nhớ (Micro-Card)",
+                                    title = "Thẻ ghi nhớ",
                                     icon = Icons.Default.Layers,
                                     modifier = Modifier
                                         .weight(1f)
@@ -397,7 +410,7 @@ fun CockpitScreen(
                                     onClick = { onOpenMicroCards(campaign.id) }
                                 )
                                 ActionToolCard(
-                                    title = "Hỏi đáp tài liệu (Chatbot)",
+                                    title = "Hỏi đáp tài liệu",
                                     icon = Icons.AutoMirrored.Filled.Chat,
                                     modifier = Modifier
                                         .weight(1f)
@@ -405,28 +418,6 @@ fun CockpitScreen(
                                     onClick = { onOpenChatBot(campaign.id) }
                                 )
                             }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Secondary links
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                TextButton(onClick = { onManageCampaign(campaign.id) }) {
-                                    Text("Quản lý chiến dịch", style = MaterialTheme.typography.bodySmall)
-                                }
-                                TextButton(onClick = onOpenGeminiSettings) {
-                                    Text("Cài đặt Gemini API key", style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-
-                            TextButton(onClick = onBackToHome, modifier = Modifier.fillMaxWidth()) {
-                                Text("Về danh sách chiến dịch", style = MaterialTheme.typography.bodySmall)
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
                         }
                     }
                 }
@@ -451,7 +442,8 @@ private fun ActionToolCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(0.dp)
+                .padding(top = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -481,6 +473,48 @@ private fun ActionToolCard(
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+@Composable
+fun PulsingChatButton(onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "scale")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.92f, // Kích thước nhỏ nhất
+        targetValue = 1.08f,  // Kích thước lớn nhất
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 800,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = Color.Transparent,
+        contentColor = Color.Transparent,
+        elevation = FloatingActionButtonDefaults.elevation(
+            0.dp,
+            0.dp,
+            0.dp,
+            0.dp
+        ),
+        modifier = Modifier.offset(x = 16.dp, y = 32.dp)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.chatbot),
+            contentDescription = "Hỏi đáp tài liệu",
+            modifier = Modifier
+                .size(96.dp)
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale
+                ), // Áp dụng hiệu ứng phóng to thu nhỏ vào ảnh
+            contentScale = ContentScale.Fit
+        )
     }
 }
 
