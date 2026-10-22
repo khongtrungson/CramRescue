@@ -22,6 +22,15 @@ class QuizRepositoryImpl(
         return quizId
     }
 
+    override suspend fun updateQuiz(quiz: Quiz, questions: List<QuizQuestion>) {
+        val quizEntity = QuizMapper.toEntity(quiz.copy(questionCount = questions.size))
+        val questionEntities = questions.mapIndexed { idx, q ->
+            QuizMapper.toEntity(q.copy(questionOrder = idx + 1), quiz.id)
+        }
+        val retainedQuestionIds = questions.map { it.id }.filter { it > 0L }
+        quizDao.updateQuizWithQuestions(quizEntity, questionEntities, retainedQuestionIds)
+    }
+
     override fun observeQuizzesByCampaign(campaignId: Long): Flow<List<Quiz>> {
         return quizDao.observeQuizzesByCampaign(campaignId).map { list ->
             list.map { QuizMapper.toDomain(it) }

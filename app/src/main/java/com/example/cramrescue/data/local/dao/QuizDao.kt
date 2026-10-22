@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.example.cramrescue.data.local.entity.QuizAttemptEntity
 import com.example.cramrescue.data.local.entity.QuizEntity
 import com.example.cramrescue.data.local.entity.QuizQuestionEntity
@@ -14,8 +16,32 @@ interface QuizDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuiz(quiz: QuizEntity): Long
 
+    @Update
+    suspend fun updateQuiz(quiz: QuizEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuestions(items: List<QuizQuestionEntity>)
+
+    @Query("DELETE FROM quiz_questions WHERE quizId = :quizId")
+    suspend fun deleteQuestionsByQuizId(quizId: Long)
+
+    @Query("DELETE FROM quiz_questions WHERE quizId = :quizId AND id NOT IN (:keepIds)")
+    suspend fun deleteQuestionsNotIn(quizId: Long, keepIds: List<Long>)
+
+    @Transaction
+    suspend fun updateQuizWithQuestions(
+        quiz: QuizEntity,
+        questions: List<QuizQuestionEntity>,
+        retainedQuestionIds: List<Long>
+    ) {
+        updateQuiz(quiz)
+        if (retainedQuestionIds.isNotEmpty()) {
+            deleteQuestionsNotIn(quiz.id, retainedQuestionIds)
+        } else {
+            deleteQuestionsByQuizId(quiz.id)
+        }
+        insertQuestions(questions)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttempt(attempt: QuizAttemptEntity): Long

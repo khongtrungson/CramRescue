@@ -23,6 +23,7 @@ class SubmitQuizAttemptUseCaseTest {
         var lastUpdatedBestScore: Float? = null
 
         override suspend fun saveQuiz(quiz: Quiz, questions: List<QuizQuestion>): Long = quiz.id
+        override suspend fun updateQuiz(quiz: Quiz, questions: List<QuizQuestion>) {}
         override fun observeQuizzesByCampaign(campaignId: Long): Flow<List<Quiz>> = emptyFlow()
         override suspend fun getQuizzesByCampaign(campaignId: Long): List<Quiz> = listOf(quiz)
         override suspend fun getQuizById(quizId: Long): Quiz? = if (quiz.id == quizId) quiz else null

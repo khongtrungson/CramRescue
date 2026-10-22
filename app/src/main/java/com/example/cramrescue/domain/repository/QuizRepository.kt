@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface QuizRepository {
     suspend fun saveQuiz(quiz: Quiz, questions: List<QuizQuestion>): Long
+    suspend fun updateQuiz(quiz: Quiz, questions: List<QuizQuestion>)
     fun observeQuizzesByCampaign(campaignId: Long): Flow<List<Quiz>>
     suspend fun getQuizzesByCampaign(campaignId: Long): List<Quiz>
     suspend fun getQuizById(quizId: Long): Quiz?

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Warning
@@ -60,7 +61,8 @@ fun QuizListScreen(
     campaignId: Long,
     viewModelFactory: QuizListViewModelFactory,
     onBack: () -> Unit,
-    onStartExam: (Long) -> Unit
+    onStartExam: (Long) -> Unit,
+    onEditQuiz: (Long) -> Unit
 ) {
     val viewModel: QuizListViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -143,6 +145,7 @@ fun QuizListScreen(
                             QuizCard(
                                 quiz = quiz,
                                 onStart = { onStartExam(quiz.id) },
+                                onEdit = { onEditQuiz(quiz.id) },
                                 onDelete = { quizToDelete = quiz }
                             )
                         }
@@ -210,7 +213,7 @@ fun QuizListScreen(
                     onClick = {
                         showCreateDialog = false
                         viewModel.generateNewQuiz(selectedQuestionCount) { newQuizId ->
-                            onStartExam(newQuizId)
+                            onEditQuiz(newQuizId)
                         }
                     }
                 ) {
@@ -268,6 +271,7 @@ fun QuizListScreen(
 private fun QuizCard(
     quiz: Quiz,
     onStart: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
@@ -298,12 +302,21 @@ private fun QuizCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Xóa đề thi",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Chỉnh sửa đề thi",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Xóa đề thi",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
 

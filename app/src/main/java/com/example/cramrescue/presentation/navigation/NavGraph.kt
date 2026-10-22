@@ -42,6 +42,8 @@ import com.example.cramrescue.presentation.settings.GeminiSettingsScreen
 import com.example.cramrescue.presentation.settings.GeminiSettingsViewModelFactory
 import com.example.cramrescue.presentation.quiz.QuizListScreen
 import com.example.cramrescue.presentation.quiz.QuizListViewModelFactory
+import com.example.cramrescue.presentation.quiz.QuizEditScreen
+import com.example.cramrescue.presentation.quiz.QuizEditViewModelFactory
 import com.example.cramrescue.presentation.quiz.QuizExamScreen
 import com.example.cramrescue.presentation.quiz.QuizExamViewModelFactory
 import com.example.cramrescue.presentation.quiz.QuizResultScreen
@@ -357,7 +359,32 @@ fun NavGraph(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onStartExam = { quizId ->
                     navController.navigate(Screen.QuizExam.createRoute(campaignId, quizId))
+                },
+                onEditQuiz = { quizId ->
+                    navController.navigate(Screen.QuizEdit.createRoute(campaignId, quizId))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.QuizEdit.route,
+            arguments = listOf(
+                navArgument(Screen.QuizEdit.ARG_CAMPAIGN_ID) { type = NavType.LongType },
+                navArgument(Screen.QuizEdit.ARG_QUIZ_ID) { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val campaignId = backStackEntry.arguments?.getLong(Screen.QuizEdit.ARG_CAMPAIGN_ID) ?: 0L
+            val quizId = backStackEntry.arguments?.getLong(Screen.QuizEdit.ARG_QUIZ_ID) ?: 0L
+            val factory = QuizEditViewModelFactory(
+                quizId = quizId,
+                quizRepository = application.quizRepository,
+                updateQuizUseCase = application.updateQuizUseCase
+            )
+            QuizEditScreen(
+                campaignId = campaignId,
+                quizId = quizId,
+                viewModelFactory = factory,
+                onBack = { navController.popBackStack() }
             )
         }
 

@@ -40,8 +40,31 @@ class QuizRepositoryTest {
 
         override suspend fun insertQuestions(items: List<QuizQuestionEntity>) {
             items.forEach { q ->
-                questions.add(q.copy(id = nextQuestionId++))
+                val id = if (q.id > 0L) q.id else nextQuestionId++
+                val existingIndex = questions.indexOfFirst { it.id == id }
+                val entity = q.copy(id = id)
+                if (existingIndex >= 0) {
+                    questions[existingIndex] = entity
+                } else {
+                    questions.add(entity)
+                }
             }
+        }
+
+        override suspend fun updateQuiz(quiz: QuizEntity) {
+            val index = quizzes.indexOfFirst { it.id == quiz.id }
+            if (index >= 0) {
+                quizzes[index] = quiz
+                quizzesFlow.value = quizzes.toList()
+            }
+        }
+
+        override suspend fun deleteQuestionsByQuizId(quizId: Long) {
+            questions.removeAll { it.quizId == quizId }
+        }
+
+        override suspend fun deleteQuestionsNotIn(quizId: Long, keepIds: List<Long>) {
+            questions.removeAll { it.quizId == quizId && it.id !in keepIds }
         }
 
         override suspend fun insertAttempt(attempt: QuizAttemptEntity): Long {
@@ -168,5 +191,75 @@ class QuizRepositoryTest {
         assertEquals(1, retrievedAttempt?.answers?.size)
         assertEquals(101L, retrievedAttempt?.answers?.first()?.questionId)
         assertEquals(2, retrievedAttempt?.answers?.first()?.selectedOptionIndex)
+    }
+
+    @Test
+    fun updateQuiz_updatesMetadataAndSyncsQuestions() = runBlocking {
+        val dao = FakeQuizDao()
+        val repository = QuizRepositoryImpl(dao)
+
+        val quiz = Quiz(
+            campaignId = 1L,
+            title = "Original Title",
+            questionCount = 2,
+            createdAt = Instant.now()
+        )
+        val q1 = QuizQuestion(
+            questionOrder = 1,
+            stem = "Q1 stem",
+            options = listOf("A1", "B1", "C1", "D1"),
+            correctOptionIndex = 0,
+            explanation = "Exp 1",
+            sourceBlockIds = listOf("B1")
+        )
+        val q2 = QuizQuestion(
+            questionOrder = 2,
+            stem = "Q2 stem",
+            options = listOf("A2", "B2", "C2", "D2"),
+            correctOptionIndex = 1,
+            explanation = "Exp 2",
+            sourceBlockIds = listOf("B2")
+        )
+
+        val quizId = repository.saveQuiz(quiz, listOf(q1, q2))
+        val initialDetail = repository.getQuizDetail(quizId)
+        assertNotNull(initialDetail)
+        assertEquals(2, initialDetail!!.questions.size)
+        val savedQ1 = initialDetail.questions[0]
+        val savedQ2 = initialDetail.questions[1]
+
+        // Now update: modify Q1, delete Q2, add Q3
+        val updatedQ1 = savedQ1.copy(stem = "Updated Q1 stem")
+        val newQ3 = QuizQuestion(
+            id = 0L,
+            quizId = quizId,
+            questionOrder = 2,
+            stem = "New Q3 stem",
+            options = listOf("A3", "B3", "C3", "D3"),
+            correctOptionIndex = 2,
+            explanation = "Exp 3",
+            sourceBlockIds = emptyList()
+        )
+
+        val updatedQuiz = initialDetail.quiz.copy(title = "New Updated Title")
+        repository.updateQuiz(updatedQuiz, listOf(updatedQ1, newQ3))
+
+        val finalDetail = repository.getQuizDetail(quizId)
+        assertNotNull(finalDetail)
+        assertEquals("New Updated Title", finalDetail!!.quiz.title)
+        assertEquals(2, finalDetail.quiz.questionCount)
+        assertEquals(2, finalDetail.questions.size)
+
+        // Verify Q1 kept its ID and was updated
+        assertEquals(savedQ1.id, finalDetail.questions[0].id)
+        assertEquals("Updated Q1 stem", finalDetail.questions[0].stem)
+        assertEquals(1, finalDetail.questions[0].questionOrder)
+
+        // Verify Q2 was deleted
+        assertNull(finalDetail.questions.firstOrNull { it.id == savedQ2.id })
+
+        // Verify new Q3 was inserted with a new ID
+        assertEquals("New Q3 stem", finalDetail.questions[1].stem)
+        assertEquals(2, finalDetail.questions[1].questionOrder)
     }
 }

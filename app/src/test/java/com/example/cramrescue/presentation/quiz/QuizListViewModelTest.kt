@@ -23,6 +23,7 @@ class QuizListViewModelTest {
         val quizzesFlow = MutableStateFlow<List<Quiz>>(emptyList())
 
         override suspend fun saveQuiz(quiz: Quiz, questions: List<QuizQuestion>): Long = 1L
+        override suspend fun updateQuiz(quiz: Quiz, questions: List<QuizQuestion>) {}
         override fun observeQuizzesByCampaign(campaignId: Long): Flow<List<Quiz>> = quizzesFlow
         override suspend fun getQuizzesByCampaign(campaignId: Long): List<Quiz> = quizzes
         override suspend fun getQuizById(quizId: Long): Quiz? = quizzes.firstOrNull { it.id == quizId }

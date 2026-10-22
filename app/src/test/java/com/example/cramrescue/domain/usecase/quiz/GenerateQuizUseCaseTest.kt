@@ -38,6 +38,8 @@ class GenerateQuizUseCaseTest {
             return 100L
         }
 
+        override suspend fun updateQuiz(quiz: Quiz, questions: List<QuizQuestion>) {}
+
         override fun observeQuizzesByCampaign(campaignId: Long): Flow<List<Quiz>> = emptyFlow()
         override suspend fun getQuizzesByCampaign(campaignId: Long): List<Quiz> = savedQuizzes
         override suspend fun getQuizById(quizId: Long): Quiz? = savedQuizzes.firstOrNull { it.id == quizId }
