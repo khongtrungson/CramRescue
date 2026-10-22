@@ -64,7 +64,8 @@ fun NavGraph(navController: NavHostController) {
                 onCreateCampaignClick = { navController.navigate(Screen.CreateCampaign.route) },
                 onOpenCockpit = { campaignId ->
                     navController.navigate(Screen.Cockpit.createRoute(campaignId))
-                }
+                },
+                onOpenSettings = { navController.navigate(Screen.GeminiSettings.route) }
             )
         }
 
@@ -335,7 +336,9 @@ fun NavGraph(navController: NavHostController) {
             val factory = GeminiSettingsViewModelFactory(
                 application.geminiCredentialRepository,
                 application.saveGeminiCredentialUseCase,
-                application.checkStoredGeminiCredentialUseCase
+                application.checkStoredGeminiCredentialUseCase,
+                application.reminderSettingsRepository,
+                application.reminderScheduler
             )
             GeminiSettingsScreen(
                 viewModelFactory = factory,

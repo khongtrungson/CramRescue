@@ -30,12 +30,14 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -71,7 +73,8 @@ import com.example.cramrescue.ui.theme.OnCodeRed
 fun HomeScreen(
     viewModelFactory: HomeViewModelFactory,
     onCreateCampaignClick: () -> Unit,
-    onOpenCockpit: (Long) -> Unit
+    onOpenCockpit: (Long) -> Unit,
+    onOpenSettings: () -> Unit = {}
 ) {
     val viewModel: HomeViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
@@ -79,14 +82,15 @@ fun HomeScreen(
     // Re-read on every entry: a Campaign may have been created, edited or deleted meanwhile.
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    HomeContent(uiState, onCreateCampaignClick, onOpenCockpit)
+    HomeContent(uiState, onCreateCampaignClick, onOpenCockpit, onOpenSettings)
 }
 
 @Composable
 internal fun HomeContent(
     uiState: HomeUiState,
     onCreateCampaignClick: () -> Unit,
-    onOpenCockpit: (Long) -> Unit
+    onOpenCockpit: (Long) -> Unit,
+    onOpenSettings: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -140,6 +144,14 @@ internal fun HomeContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 40.dp)
+                )
+            }
+
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Cài đặt",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
