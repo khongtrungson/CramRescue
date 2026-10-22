@@ -14,7 +14,7 @@ data class CampaignCountdown(
 ) {
     companion object {
         // requirements.md FR-8: "under 6 hours remaining" enters Emergency High-alert.
-        val EMERGENCY_THRESHOLD: Duration = Duration.ofHours(6)
+        val EMERGENCY_THRESHOLD: Duration = Duration.ofHours(24)
 
         fun from(examDateTime: Instant, now: Instant): CampaignCountdown {
             val rawRemaining = Duration.between(now, examDateTime)
