@@ -51,8 +51,26 @@ import com.example.cramrescue.domain.usecase.chat.SendChatMessageUseCase
 import com.example.cramrescue.domain.usecase.recall.RecordRecallAssessmentUseCase
 import com.example.cramrescue.domain.usecase.settings.CheckStoredGeminiCredentialUseCase
 import com.example.cramrescue.domain.usecase.settings.SaveGeminiCredentialUseCase
+import com.example.cramrescue.domain.repository.ReminderSettingsRepository
+import com.example.cramrescue.data.repository.ReminderSettingsRepositoryImpl
+import com.example.cramrescue.domain.reminder.ReminderScheduler
+import com.example.cramrescue.data.reminder.AndroidReminderScheduler
+import com.example.cramrescue.data.reminder.NotificationHelper
 
 class CramRescueApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        NotificationHelper.createNotificationChannel(this)
+    }
+
+    val reminderSettingsRepository: ReminderSettingsRepository by lazy {
+        ReminderSettingsRepositoryImpl(this)
+    }
+
+    val reminderScheduler: ReminderScheduler by lazy {
+        AndroidReminderScheduler(this)
+    }
 
     private val database: AppDatabase by lazy { AppDatabase.getInstance(this) }
 
